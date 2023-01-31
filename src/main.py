@@ -165,7 +165,7 @@ def on_metrics_click():
     g.ds_name_2_img_names = ds_name_2_img_names
 
     ### Detect if the task multi label
-    is_multilabel = utils.is_task_multilabel(img2classes_gt, img2classes_pred)
+    is_multilabel = utils.is_task_multilabel(img2classes_gt)
     if is_multilabel:
         task_notif_box.description = "Treating the task as a multi-label classification"
     else:

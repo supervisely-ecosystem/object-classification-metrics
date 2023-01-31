@@ -43,9 +43,13 @@ def collect_matching(ds_matching, tags_gt, tags_pred, selected_tags):
             filtered_classes_gt = [
                 tagId2classGT_gt(tag["tagId"]) for tag in img_gt.tags if tag["tagId"] in ids_keep
             ]
+            has_confidence = all([isinstance(tag.get("value"), float) for tag in img_pred.tags])
+            img_pred_tags = img_pred.tags
+            if has_confidence:
+                img_pred_tags = sorted(img_pred.tags, key=lambda tag: tag["value"], reverse=True)
             filtered_classes_pred = [
                 tagId2classGT_pred(tag["tagId"])
-                for tag in img_pred.tags
+                for tag in img_pred_tags
                 if tag["tagId"] in ids_keep
             ]
             img2classes_gt[img_gt.name] = filtered_classes_gt
@@ -89,8 +93,8 @@ def filter_imgs_(img2tags: dict, remove_keys):
         del filtered[k]
 
 
-def is_task_multilabel(img2tags_gt: dict, img2tags_pred: dict):
-    for k, tags in chain(img2tags_gt.items(), img2tags_pred.items()):
+def is_task_multilabel(img2tags_gt: dict):
+    for k, tags in img2tags_gt.items():
         if len(tags) != 1:
             return True
     return False
