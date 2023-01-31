@@ -21,6 +21,7 @@ from supervisely.app.widgets import (
     MatchTagMetas,
     Input,
     Table,
+    GridGallery,
 )
 
 from src import metric_utils
@@ -119,16 +120,23 @@ confusion_matrix_widget = ConfusionMatrix()
 metrics_btn = Button("Calculate metrics")
 metrics_overall_table = Table()
 metrics_per_class_table = Table()
+metrics_per_image = Table()
+images_gallery = GridGallery(2, show_opacity_slider=False)
 metrics_container = Container([confusion_matrix_widget, metrics_overall_table, metrics_btn])
+per_image_container = Container(
+    [metrics_per_image, images_gallery], direction="horizontal", fractions=[5, 5]
+)
 metrics_card = Card(
     "Confusion Matrix & Metrics",
     "",
-    True,
-    metrics_container,
+    collapsable=True,
+    content=Container([metrics_container, per_image_container]),
 )
 confusion_matrix_widget.hide()
 metrics_overall_table.hide()
 metrics_per_class_table.hide()
+metrics_per_image.hide()
+images_gallery.hide()
 metrics_card.collapse()
 
 
@@ -140,8 +148,8 @@ def on_metrics_click():
         img2classes_gt,
         img2classes_pred,
         classes,
-        img_name_2_img_id_gt,
-        img_name_2_img_id_pred,
+        img_name_2_img_info_gt,
+        img_name_2_img_info_pred,
         ds_name_2_img_names,
     ) = utils.collect_matching(ds_matching, g.tags_gt, g.tags_pred_filtered, selected_tags)
     utils.filter_imgs_without_tags_(img2classes_gt, img2classes_pred)
@@ -149,14 +157,14 @@ def on_metrics_click():
     g.img2classes_gt = img2classes_gt
     g.img2classes_pred = img2classes_pred
     g.classes = classes
-    g.img_name_2_img_id_gt = img_name_2_img_id_gt
-    g.img_name_2_img_id_pred = img_name_2_img_id_pred
+    g.img_name_2_img_info_gt = img_name_2_img_info_gt
+    g.img_name_2_img_info_pred = img_name_2_img_info_pred
     g.ds_name_2_img_names = ds_name_2_img_names
 
-    is_multilabel = utils.is_task_multilabel(img2classes_gt, img2classes_pred)
-    print(f"is_task_multilabel: {is_multilabel}")
+    g.is_multilabel = utils.is_task_multilabel(img2classes_gt, img2classes_pred)
+    print(f"is_task_multilabel: {g.is_multilabel}")
 
-    if is_multilabel:
+    if g.is_multilabel:
         confusion_matrix = metric_utils.get_confusion_matrix_multilabel(
             img2classes_gt, img2classes_pred, classes
         )
@@ -213,8 +221,78 @@ def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
         img_names2 = metric_utils.filter_by_class(g.img2classes_pred, cls_pred)
     else:
         img_names2 = metric_utils.filter_by_class(g.img2classes_pred, cls_gt, True)
-    img_names = set(img_names1) & set(img_names2)
-    print(img_names)
+    img_names = list(set(img_names1) & set(img_names2))
+
+    columns = ["GT_IMG_ID", "PRED_IMG_ID", "NAME", "TP", "FP", "FN"]  # ["link"]
+    # tags from img names
+    # img2classes_gt {img_nmae: [tag]}
+    # tag_meta from tags_gt, pred
+    # img_name_2_img_id_gt - ID
+    # img_name to image_info
+    rows = [
+        [
+            g.img_name_2_img_info_gt[image_name].id,
+            g.img_name_2_img_info_pred[image_name].id,
+            image_name,
+            *metric_utils.img_metrics(g.img2classes_gt[image_name], g.img2classes_pred[image_name]),
+        ]
+        for image_name in img_names
+    ]
+
+    df = pd.DataFrame(rows, columns=columns)
+    metrics_per_image.read_pandas(df)
+    metrics_per_image.show()
+    set_img_to_gallery(img_names[0])
+    images_gallery.show()
+
+
+@metrics_per_image.click
+def select_image_row(cell: Table.ClickedDataPoint):
+    image_name = cell.row["NAME"]
+    set_img_to_gallery(image_name)
+
+
+def set_img_to_gallery(image_name):
+    images_gallery.loading = True
+    img_tags_gt = []
+    for tag_json in g.img_name_2_img_info_gt[image_name].tags:
+        if "name" not in tag_json.keys():
+            sly_id = tag_json["tagId"]
+            for tag_meta in g.tags_gt:
+                tag_meta: sly.TagMeta
+                if tag_meta.sly_id == sly_id:
+                    tag_json["name"] = tag_meta.name
+                    break
+        tag = sly.Tag.from_json(tag_json, g.tags_gt)
+        img_tags_gt.append(tag)
+
+    img_tags_pred = []
+    for tag_json in g.img_name_2_img_info_pred[image_name].tags:
+        if "name" not in tag_json.keys():
+            sly_id = tag_json["tagId"]
+            for tag_meta in g.tags_pred:
+                tag_meta: sly.TagMeta
+                if tag_meta.sly_id == sly_id:
+                    tag_json["name"] = tag_meta.name
+                    break
+        tag = sly.Tag.from_json(tag_json, g.tags_pred)
+        img_tags_pred.append(tag)
+
+    img_info_gt = g.img_name_2_img_info_gt[image_name]
+    img_info_pred = g.img_name_2_img_info_pred[image_name]
+    images_for_preview = utils.get_preview_image_pair(
+        img_info_gt,
+        img_info_pred,
+        img_tags_gt,
+        img_tags_pred,
+        g.is_multilabel,
+    )
+
+    images_gallery.clean_up()
+    for current_image in images_for_preview:
+        images_gallery.append(image_url=current_image["url"], title=current_image["title"])
+
+    images_gallery.loading = False
 
 
 ### FINAL APP
