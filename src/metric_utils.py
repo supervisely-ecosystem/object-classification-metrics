@@ -49,16 +49,15 @@ def get_confusion_matrix(img2classes_gt: dict, img2classes_pred: dict, classes: 
     for img_name, classes_gt in img2classes_gt.items():
         classes_pred = img2classes_pred.get(img_name)
         # We only have one class in a list for a single-label classification
-        class_gt = classes_gt[0]
-        class_pred = classes_pred[0]
+        class_gt = classes_gt[0] if len(classes_gt) else "None"
+        class_pred = classes_pred[0] if len(classes_pred) else "None"
         confusion_matrix[class_gt][class_pred] += 1
 
     return confusion_matrix
 
 
 def get_dataframes(img2classes_gt: dict, img2classes_pred: dict, classes: list):
-    # добавить поддержку single-label
-    # обрабатывать ли conf здесь? (обрезка по conf)
+    # добавить поддержку single-label здесь?
 
     assert img2classes_gt.keys() == img2classes_pred.keys()
 
