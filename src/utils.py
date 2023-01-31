@@ -1,3 +1,4 @@
+import pandas as pd
 from itertools import chain
 from supervisely import TagMetaCollection
 
@@ -30,8 +31,8 @@ def collect_matching(ds_matching, tags_gt, tags_pred, selected_tags):
 
     img2classes_gt = {}
     img2classes_pred = {}
-    img_name_2_img_id_gt = {}
-    img_name_2_img_id_pred = {}
+    img_name_2_img_info_gt = {}
+    img_name_2_img_info_pred = {}
     ds_name_2_img_names = {}
     for ds_name, ds_values in ds_matching.items():
         if ds_values["dataset_matched"] != "both":
@@ -49,8 +50,8 @@ def collect_matching(ds_matching, tags_gt, tags_pred, selected_tags):
             ]
             img2classes_gt[img_gt.name] = filtered_classes_gt
             img2classes_pred[img_pred.name] = filtered_classes_pred
-            img_name_2_img_id_gt[img_gt.name] = img_gt.id
-            img_name_2_img_id_pred[img_pred.name] = img_pred.id
+            img_name_2_img_info_gt[img_gt.name] = img_gt
+            img_name_2_img_info_pred[img_pred.name] = img_pred
             ds_name_2_img_names[ds_name].append(img_gt.name)
 
     classes = list(zip(*selected_tags))[0]  # classes == left selected tag_names
@@ -58,8 +59,8 @@ def collect_matching(ds_matching, tags_gt, tags_pred, selected_tags):
         img2classes_gt,
         img2classes_pred,
         classes,
-        img_name_2_img_id_gt,
-        img_name_2_img_id_pred,
+        img_name_2_img_info_gt,
+        img_name_2_img_info_pred,
         ds_name_2_img_names,
     )
 
@@ -104,3 +105,27 @@ def filter_tags_by_suffix(tags, suffix):
             continue
         filtered_tags.append(tag)
     return TagMetaCollection(filtered_tags)
+
+
+def get_overall_metrics(report, mlcm):
+    df = pd.DataFrame(report)[["micro avg"]].T
+    mlcm_sum = mlcm.sum(0)
+    df["TP"] = mlcm_sum[1, 1]
+    df["FN"] = mlcm_sum[1, 0]
+    df["FP"] = mlcm_sum[0, 1]
+    df.index = ["total"]
+    df = df.rename(columns={"support": "count"})
+    return df
+
+
+def get_per_class_metrics(report, mlcm, classes):
+    df = pd.DataFrame(report).iloc[:, : len(classes)].T
+    df["TP"] = mlcm[:, 1, 1]
+    df["FN"] = mlcm[:, 1, 0]
+    df["FP"] = mlcm[:, 0, 1]
+    df["Class"] = classes
+    cols = list(df.columns)
+    cols = [cols[-1]] + cols[:-1]
+    df = df[cols]
+    df = df.rename(columns={"support": "count"})
+    return df

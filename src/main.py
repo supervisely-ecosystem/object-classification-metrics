@@ -21,6 +21,8 @@ from supervisely.app.widgets import (
     MatchTagMetas,
     Input,
     Table,
+    Tabs,
+    NotificationBox,
 )
 
 from src import metric_utils
@@ -34,10 +36,7 @@ load_dotenv(os.path.expanduser("~/supervisely.env"))
 api = sly.Api()
 
 project_id_gt = os.environ.get("project_id_gt")
-project_id_pred = os.environ.get("project_id_pred")
-if project_id_gt is not None:
-    ds_gt = api.dataset.get_list(project_id_gt)
-    ds_pred = api.dataset.get_list(project_id_pred)
+project_id_pred = os.environ.get("project_id_pred") or os.environ.get("PROJECT_ID")
 
 
 ### 1. Select Datasets
@@ -71,6 +70,8 @@ match_datasets_card = Card(
 def on_match_datasets():
     project_id_gt = select_dataset_gt._project_id
     project_id_pred = select_dataset_pred._project_id
+    if project_id_gt is None or project_id_pred is None:
+        raise Exception("Please, select a project and datasets")
     ds_gt = api.dataset.get_list(project_id_gt)
     ds_pred = api.dataset.get_list(project_id_pred)
 
@@ -101,7 +102,7 @@ match_tags = MatchTagMetas(selectable=True)
 match_tags_btn = Button("Select")
 match_tags_container = Container([match_tags_input_f, match_tags, match_tags_btn])
 match_tags_card = Card(
-    "Match tags",
+    "Select tags",
     "Choose tags/classes that will be used for metrics.",
     True,
     match_tags_container,
@@ -112,20 +113,30 @@ match_tags_card.collapse()
 @match_tags_btn.click
 def on_match_tags():
     metrics_card.uncollapse()
+    metrics_btn.enable()
 
 
 ### 4. Confusion Matrix & Metrics
-confusion_matrix_widget = ConfusionMatrix()
+task_notif_box = NotificationBox("Note:")
 metrics_btn = Button("Calculate metrics")
+confusion_matrix_widget = ConfusionMatrix()
 metrics_overall_table = Table()
+metrics_overall_table_f = Field(metrics_overall_table, "Overall project metrics")
 metrics_per_class_table = Table()
-metrics_container = Container([confusion_matrix_widget, metrics_overall_table, metrics_btn])
+metrics_per_class_table_f = Field(metrics_per_class_table, "Per-class metrics")
+metrics_tab_confusion_matrix = Container([confusion_matrix_widget])
+metrics_tabs = Tabs(
+    ["Confusion matrix", "Per class", "Overall"],
+    [metrics_tab_confusion_matrix, metrics_per_class_table_f, metrics_overall_table_f],
+)
 metrics_card = Card(
     "Confusion Matrix & Metrics",
     "",
     True,
-    metrics_container,
+    metrics_tabs,
 )
+metrics_btn.disable()
+task_notif_box.hide()
 confusion_matrix_widget.hide()
 metrics_overall_table.hide()
 metrics_per_class_table.hide()
@@ -140,8 +151,8 @@ def on_metrics_click():
         img2classes_gt,
         img2classes_pred,
         classes,
-        img_name_2_img_id_gt,
-        img_name_2_img_id_pred,
+        img_name_2_img_info_gt,
+        img_name_2_img_info_pred,
         ds_name_2_img_names,
     ) = utils.collect_matching(ds_matching, g.tags_gt, g.tags_pred_filtered, selected_tags)
     utils.filter_imgs_without_tags_(img2classes_gt, img2classes_pred)
@@ -149,13 +160,19 @@ def on_metrics_click():
     g.img2classes_gt = img2classes_gt
     g.img2classes_pred = img2classes_pred
     g.classes = classes
-    g.img_name_2_img_id_gt = img_name_2_img_id_gt
-    g.img_name_2_img_id_pred = img_name_2_img_id_pred
+    g.img_name_2_img_info_gt = img_name_2_img_info_gt
+    g.img_name_2_img_info_pred = img_name_2_img_info_pred
     g.ds_name_2_img_names = ds_name_2_img_names
 
+    ### Detect if the task multi label
     is_multilabel = utils.is_task_multilabel(img2classes_gt, img2classes_pred)
-    print(f"is_task_multilabel: {is_multilabel}")
+    if is_multilabel:
+        task_notif_box.description = "Treating the task as a multi-label classification"
+    else:
+        task_notif_box.description = "Treating the task as a single-label classification"
+    task_notif_box.show()
 
+    ### Calculate confusion_matrix
     if is_multilabel:
         confusion_matrix = metric_utils.get_confusion_matrix_multilabel(
             img2classes_gt, img2classes_pred, classes
@@ -164,12 +181,12 @@ def on_metrics_click():
         confusion_matrix = metric_utils.get_confusion_matrix(
             img2classes_gt, img2classes_pred, classes
         )
-    print(confusion_matrix)
 
     confusion_matrix_widget._update_matrix_data(confusion_matrix)
     confusion_matrix_widget.update_data()
     DataJson().send_changes()
 
+    ### Calculate metrics
     gt, pred = metric_utils.get_dataframes(img2classes_gt, img2classes_pred, classes)
     report = sklearn.metrics.classification_report(
         gt.values, pred.values, target_names=classes, output_dict=True
@@ -178,27 +195,27 @@ def on_metrics_click():
     # [[TN, FP]
     #  [FN, TP]]
 
-    df = pd.DataFrame(report)[["micro avg"]].T
-    mlcm_sum = mlcm.sum(0)
-    df["TP"] = mlcm_sum[1, 1]
-    df["FN"] = mlcm_sum[1, 0]
-    df["FP"] = mlcm_sum[0, 1]
-    df.index = ["total"]
-    metrics_overall_table._update_table_data(input_data=df)
+    ### Overall metrics
+    overall_metrics_df = utils.get_overall_metrics(report, mlcm)
+    metrics_overall_table._update_table_data(input_data=overall_metrics_df)
     metrics_overall_table.update_data()
     DataJson().send_changes()
 
-    df = pd.DataFrame(report).iloc[:, : len(classes)]
+    ### Per-class metrics
+    per_class_metrics_df = utils.get_per_class_metrics(report, mlcm, classes)
+    metrics_per_class_table._update_table_data(input_data=per_class_metrics_df)
+    metrics_per_class_table.update_data()
+    DataJson().send_changes()
 
     confusion_matrix_widget.show()
     metrics_overall_table.show()
     metrics_per_class_table.show()
 
     ### For debug:
-    confusion_matrix = metric_utils.get_confusion_matrix(img2classes_gt, img2classes_pred, classes)
-    print(confusion_matrix)
-    print(metric_utils.get_metrics(gt, pred))
-    print(report)
+    # confusion_matrix = metric_utils.get_confusion_matrix(img2classes_gt, img2classes_pred, classes)
+    # print(confusion_matrix)
+    # print(metric_utils.get_metrics(gt, pred))
+    # print(report)
 
 
 @confusion_matrix_widget.click
@@ -219,6 +236,14 @@ def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
 
 ### FINAL APP
 final_container = Container(
-    [select_datasets_container, match_datasets_card, match_tags_card, metrics_card], gap=15
+    [
+        select_datasets_container,
+        match_datasets_card,
+        match_tags_card,
+        metrics_btn,
+        task_notif_box,
+        metrics_card,
+    ],
+    gap=15,
 )
 app = sly.Application(final_container)
