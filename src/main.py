@@ -9,6 +9,7 @@ import sklearn.metrics
 
 from dotenv import load_dotenv
 import supervisely as sly
+from supervisely.app import DataJson
 from supervisely.app.widgets import (
     ConfusionMatrix,
     Container,
@@ -19,6 +20,7 @@ from supervisely.app.widgets import (
     Field,
     MatchTagMetas,
     Input,
+    Table,
 )
 
 from src import metric_utils
@@ -40,7 +42,9 @@ if project_id_gt is not None:
 
 ### 1. Select Datasets
 select_dataset_gt = SelectDataset(project_id=project_id_gt, multiselect=True)
+select_dataset_gt._all_datasets_checkbox.check()
 select_dataset_pred = SelectDataset(project_id=project_id_pred, multiselect=True)
+select_dataset_pred._all_datasets_checkbox.check()
 card_gt = Card(
     "Ground Truth Project", "Select project with ground truth labels", content=select_dataset_gt
 )
@@ -65,12 +69,28 @@ match_datasets_card = Card(
 
 @match_datasets_btn.click
 def on_match_datasets():
+    project_id_gt = select_dataset_gt._project_id
+    project_id_pred = select_dataset_pred._project_id
+    ds_gt = api.dataset.get_list(project_id_gt)
+    ds_pred = api.dataset.get_list(project_id_pred)
+
     match_datasets.set(ds_gt, ds_pred, "GT datasets", "Pred datasets")
+
+    tags_gt = sly.ProjectMeta.from_json(api.project.get_meta(project_id_gt)).tag_metas
+    tags_pred = sly.ProjectMeta.from_json(api.project.get_meta(project_id_pred)).tag_metas
+    suffix = match_tags_input.get_value()
+    tags_pred_filtered = utils.filter_tags_by_suffix(tags_pred, suffix)
+    match_tags.set(tags_gt, tags_pred_filtered, "GT tags", "Pred tags", suffix=suffix)
+
+    g.project_id_gt = project_id_gt
+    g.project_id_pred = project_id_pred
+    g.tags_gt = tags_gt
+    g.tags_pred = tags_pred
+    g.tags_pred_filtered = tags_pred_filtered
+    match_tags_card.uncollapse()
 
 
 ### 3. Match Tags
-# tags_gt = sly.ProjectMeta.from_json(api.project.get_meta(project_id_gt)).tag_metas
-# tags_pred = sly.ProjectMeta.from_json(api.project.get_meta(project_id_pred)).tag_metas
 match_tags_input = Input("_nn")
 match_tags_input_f = Field(
     match_tags_input,
@@ -78,7 +98,7 @@ match_tags_input_f = Field(
     "If there is no matching you want due to suffix, you can input it manually.",
 )
 match_tags = MatchTagMetas(selectable=True)
-match_tags_btn = Button("Match")
+match_tags_btn = Button("Select")
 match_tags_container = Container([match_tags_input_f, match_tags, match_tags_btn])
 match_tags_card = Card(
     "Match tags",
@@ -86,40 +106,53 @@ match_tags_card = Card(
     True,
     match_tags_container,
 )
+match_tags_card.collapse()
 
 
 @match_tags_btn.click
 def on_match_tags():
-    tags_gt = sly.ProjectMeta.from_json(api.project.get_meta(project_id_gt)).tag_metas
-    tags_pred = sly.ProjectMeta.from_json(api.project.get_meta(project_id_pred)).tag_metas
-    suffix = match_tags_input.get_value()
-    tags_pred_filtered = utils.filter_tags_by_suffix(tags_pred, suffix)
-    match_tags.set(tags_gt, tags_pred_filtered, "GT tags", "Pred tags", suffix=suffix)
-    g.tags_gt = tags_gt
-    g.tags_pred = tags_pred
-    g.tags_pred_filtered = tags_pred_filtered
+    metrics_card.uncollapse()
 
 
 ### 4. Confusion Matrix & Metrics
 confusion_matrix_widget = ConfusionMatrix()
 metrics_btn = Button("Calculate metrics")
-metrics_container = Container([confusion_matrix_widget, metrics_btn])
+metrics_overall_table = Table()
+metrics_per_class_table = Table()
+metrics_container = Container([confusion_matrix_widget, metrics_overall_table, metrics_btn])
 metrics_card = Card(
     "Confusion Matrix & Metrics",
     "",
     True,
     metrics_container,
 )
+confusion_matrix_widget.hide()
+metrics_overall_table.hide()
+metrics_per_class_table.hide()
+metrics_card.collapse()
 
 
 @metrics_btn.click
 def on_metrics_click():
     ds_matching = match_datasets.get_stat()
     selected_tags = match_tags.get_selected()
-    img2classes_gt, img2classes_pred, classes = utils.collect_matching(
-        ds_matching, g.tags_gt, g.tags_pred_filtered, selected_tags
-    )
+    (
+        img2classes_gt,
+        img2classes_pred,
+        classes,
+        img_name_2_img_id_gt,
+        img_name_2_img_id_pred,
+        ds_name_2_img_names,
+    ) = utils.collect_matching(ds_matching, g.tags_gt, g.tags_pred_filtered, selected_tags)
     utils.filter_imgs_without_tags_(img2classes_gt, img2classes_pred)
+
+    g.img2classes_gt = img2classes_gt
+    g.img2classes_pred = img2classes_pred
+    g.classes = classes
+    g.img_name_2_img_id_gt = img_name_2_img_id_gt
+    g.img_name_2_img_id_pred = img_name_2_img_id_pred
+    g.ds_name_2_img_names = ds_name_2_img_names
+
     is_multilabel = utils.is_task_multilabel(img2classes_gt, img2classes_pred)
     print(f"is_task_multilabel: {is_multilabel}")
 
@@ -134,56 +167,58 @@ def on_metrics_click():
     print(confusion_matrix)
 
     confusion_matrix_widget._update_matrix_data(confusion_matrix)
-    from supervisely.app import DataJson
-
     confusion_matrix_widget.update_data()
     DataJson().send_changes()
 
     gt, pred = metric_utils.get_dataframes(img2classes_gt, img2classes_pred, classes)
+    report = sklearn.metrics.classification_report(
+        gt.values, pred.values, target_names=classes, output_dict=True
+    )
+    mlcm = sklearn.metrics.multilabel_confusion_matrix(gt.values, pred.values)
+    # [[TN, FP]
+    #  [FN, TP]]
+
+    df = pd.DataFrame(report)[["micro avg"]].T
+    mlcm_sum = mlcm.sum(0)
+    df["TP"] = mlcm_sum[1, 1]
+    df["FN"] = mlcm_sum[1, 0]
+    df["FP"] = mlcm_sum[0, 1]
+    df.index = ["total"]
+    metrics_overall_table._update_table_data(input_data=df)
+    metrics_overall_table.update_data()
+    DataJson().send_changes()
+
+    df = pd.DataFrame(report).iloc[:, : len(classes)]
+
+    confusion_matrix_widget.show()
+    metrics_overall_table.show()
+    metrics_per_class_table.show()
+
+    ### For debug:
     confusion_matrix = metric_utils.get_confusion_matrix(img2classes_gt, img2classes_pred, classes)
     print(confusion_matrix)
     print(metric_utils.get_metrics(gt, pred))
+    print(report)
+
+
+@confusion_matrix_widget.click
+def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
+    cls_gt = cell.row_name
+    cls_pred = cell.column_name
+    if cls_gt != "None":
+        img_names1 = metric_utils.filter_by_class(g.img2classes_gt, cls_gt)
+    else:
+        img_names1 = metric_utils.filter_by_class(g.img2classes_gt, cls_pred, True)
+    if cls_pred != "None":
+        img_names2 = metric_utils.filter_by_class(g.img2classes_pred, cls_pred)
+    else:
+        img_names2 = metric_utils.filter_by_class(g.img2classes_pred, cls_gt, True)
+    img_names = set(img_names1) & set(img_names2)
+    print(img_names)
 
 
 ### FINAL APP
 final_container = Container(
     [select_datasets_container, match_datasets_card, match_tags_card, metrics_card], gap=15
 )
-# final_container = Container([select_datasets_container, match_datasets_card], gap=15)
 app = sly.Application(final_container)
-
-
-### 3. Match Tags
-
-
-# ### 1. MATCH IMAGES
-
-# ### 2. MATCH TAGS
-# meta_gt = api.project.get_meta(project_id_gt)
-# meta_pred = api.project.get_meta(project_id_pred)
-# selected_tags = list(chain(meta_gt["tags"], meta_pred["tags"]))
-
-# ### 3. Settings
-
-# ### 4. confusion_matrix and metrics
-# tagid2cls = {tag["id"]: tag["name"] for tag in selected_tags}
-# classes = sorted(list(set([tag["name"] for tag in selected_tags])))
-# n_classes = len(classes)
-
-# img2classes_gt = metric_utils.collect_img2classes(api, project_id_gt, tagid2cls)
-# img2classes_pred = metric_utils.collect_img2classes(api, project_id_pred, tagid2cls)
-
-# confusion_matrix = metric_utils.get_confusion_matrix_multilabel(img2classes_gt, img2classes_pred, classes)
-
-# print(confusion_matrix)
-
-# gt, pred = metric_utils.get_dataframes(img2classes_gt, img2classes_pred, classes)
-
-# imgs = metric_utils.filter_by_class(img2classes_gt, "cat", not_in=True)
-# print(imgs)
-
-
-# res = sklearn.metrics.multilabel_confusion_matrix(gt.values, pred.values, labels=gt.columns)
-# print(res)
-
-# report = sklearn.metrics.classification_report(gt.values, pred.values, target_names=classes, output_dict=True)

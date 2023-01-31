@@ -30,9 +30,13 @@ def collect_matching(ds_matching, tags_gt, tags_pred, selected_tags):
 
     img2classes_gt = {}
     img2classes_pred = {}
+    img_name_2_img_id_gt = {}
+    img_name_2_img_id_pred = {}
+    ds_name_2_img_names = {}
     for ds_name, ds_values in ds_matching.items():
         if ds_values["dataset_matched"] != "both":
             continue
+        ds_name_2_img_names[ds_name] = []
         for img_pair in ds_values["matched"]:
             img_gt, img_pred = img_pair["left"], img_pair["right"]
             filtered_classes_gt = [
@@ -45,8 +49,19 @@ def collect_matching(ds_matching, tags_gt, tags_pred, selected_tags):
             ]
             img2classes_gt[img_gt.name] = filtered_classes_gt
             img2classes_pred[img_pred.name] = filtered_classes_pred
+            img_name_2_img_id_gt[img_gt.name] = img_gt.id
+            img_name_2_img_id_pred[img_pred.name] = img_pred.id
+            ds_name_2_img_names[ds_name].append(img_gt.name)
+
     classes = list(zip(*selected_tags))[0]  # classes == left selected tag_names
-    return img2classes_gt, img2classes_pred, classes
+    return (
+        img2classes_gt,
+        img2classes_pred,
+        classes,
+        img_name_2_img_id_gt,
+        img_name_2_img_id_pred,
+        ds_name_2_img_names,
+    )
 
 
 def tagId2name(img2tags: dict, tags: TagMetaCollection):
