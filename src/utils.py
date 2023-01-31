@@ -1,6 +1,6 @@
 import pandas as pd
 from itertools import chain
-from supervisely import TagMetaCollection
+from supervisely import TagMetaCollection, ImageInfo
 
 
 # def collect_ds_matching(ds_matching):
@@ -133,3 +133,30 @@ def get_per_class_metrics(report, mlcm, classes):
     df = df[cols]
     df = df.rename(columns={"support": "count"})
     return df
+
+
+def stringify_label_tags(predicted_tags, is_multilabel):
+    final_message = ""
+
+    for index, tag in enumerate(predicted_tags):
+        value = ""
+        if tag.value is not None:
+            value = f":{round(tag.value, 3)}"
+        if not is_multilabel:
+            final_message += f"top@{index + 1} — "
+        final_message += f"{tag.name}{value}<br>"
+
+    return final_message
+
+
+def get_preview_image_pair(img_info_gt, img_info_pred, img_tags_gt, img_tags_pred, is_multilabel):
+    return [
+        {
+            "url": img_info_gt.full_storage_url,
+            "title": stringify_label_tags(img_tags_gt, is_multilabel),
+        },
+        {
+            "url": img_info_pred.full_storage_url,
+            "title": stringify_label_tags(img_tags_pred, is_multilabel),
+        },
+    ]

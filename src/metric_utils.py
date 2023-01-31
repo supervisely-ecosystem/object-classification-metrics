@@ -126,3 +126,12 @@ def filter_by_class(img2classes: dict, cls: str, not_in=False):
 #     term_0 = (1 - y_true) * np.log(1 - y_pred + eps)
 #     term_1 = y_true * np.log(y_pred + eps)
 #     return -np.mean(term_0 + term_1, axis=0)
+
+
+def img_metrics(gt_tags, pred_tags):
+    gt_tags = set(gt_tags)
+    pred_tags = set(pred_tags)
+    tp = len(gt_tags & pred_tags)
+    fp = len(pred_tags - gt_tags)
+    fn = len(gt_tags - pred_tags)
+    return [tp, fp, fn]
