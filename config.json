@@ -1,0 +1,33 @@
+{
+  "type": "app",
+  "version": "2.0.0",
+  "name": "Explore data with embeddings",
+  "description": "Calculate and visualize embeddings",
+  "entrypoint": "python -m uvicorn src.main:app --host 0.0.0.0 --port 8000",
+  "port": 8000,
+  "icon": "https://user-images.githubusercontent.com/115161827/211832834-eef9325d-9e00-4499-ae42-2e7ee3d97f1a.png",
+  "icon_cover": true,
+  "poster": "https://user-images.githubusercontent.com/115161827/211832844-522b444d-4534-4b5e-bf12-14c7e7d3aeec.png",
+  "categories": [
+    "neural network",
+    "images",
+    "object detection",
+    "semantic segmentation",
+    "instance segmentation",
+    "metric learning",
+    "nn tools",
+    "visualization",
+    "exploration",
+    "statistics",
+    "visualization stats"
+  ],
+  "context_menu": {
+    "target": ["images_project", "images_dataset"],
+    "context_category": "Metric Learning"
+  },
+  "min_instance_version": "6.5.22",
+  "release": { "version":"v0.1.10", "name":"beta" },
+  "slug": "poldersen2/embeddings_app",
+  "need_gpu": true,
+  "community_agent": false
+}
