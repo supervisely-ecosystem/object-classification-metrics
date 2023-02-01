@@ -1,2 +1,2 @@
-supervisely==6.69.19
+git+https://github.com/supervisely/supervisely.git@max-unfinity-dev
 scikit-learn
