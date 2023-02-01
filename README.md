@@ -32,10 +32,10 @@ Application key points:
 
 # How to use
 0. Be sure that you have two projects with the same dataset names and image names to compare. Unmatched datasets and image names will not be included to metrics calculation. Also be sure that images contain labels - image tags. One label should be on images from target project for single-label classification task and more than one for multi-label task. Images without tags in ground truth project will not be included to metrics calculation.
-1. Select two projects labeled by image tags: with ground truth labels and with model predictions.
-2. The app matches images in both projects and produces detailed report about matched pairs, allowing to validate the data.
-3. Then you can match classes and select that will be used in metrics calculation. If your tags from prediction project have a suffix (e.g. "_nn") that was auto-generated after the [Apply Classifier App](https://ecosystem.supervise.ly/apps/apply-classification-model-to-project), you should make sure that they are matched too. If something went wrong and some tags weren't matched, adjust the suffix field and try again.
-4. Click "Calculate" and explore the confusion matrix below. Click on the cells to see the per image stats for any interesting cases, where the model gets right or wrong. You can display images with target and predicted tags by click on rows of per images stats table.
+1. Launch the app. Select two projects labeled by image tags at first step: with ground truth labels and with model predictions.
+2. The app matches images in both projects (step 2) and produces detailed report about matched pairs, allowing to validate the data.
+3. Then you can match classes and select that will be used in metrics calculation at step 3. If your tags from prediction project have a suffix (e.g. "_nn") that was auto-generated after the [Apply Classifier App](https://ecosystem.supervise.ly/apps/apply-classification-model-to-project), you should make sure that they are matched too. If something went wrong and some tags weren't matched, adjust the suffix field and try again.
+4. Click "Calculate" and explore the confusion matrix below (step 4). Click on the cells to see the per image stats for any interesting cases, where the model gets right or wrong. You can display images with target and predicted tags by click on rows of per images stats table.
 5. Check the tabs "Overall" and "Per class" to see the metrics like precision, recall, f1-score and others.
 
 # Related apps
