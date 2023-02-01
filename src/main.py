@@ -54,6 +54,7 @@ card_pred = Card(
 select_dataset_btn = Button("Select Datasets")
 select_datasets_container = Container([card_gt, card_pred], "horizontal", gap=15)
 
+change_datasets_btn = Button("Change Datasets", "info", "small", plain=True)
 
 ### 2. Match Datasets
 match_datasets = MatchDatasets()
@@ -78,43 +79,94 @@ def on_match_datasets():
 
     match_datasets.set(ds_gt, ds_pred, "GT datasets", "Pred datasets")
 
-    tags_gt = sly.ProjectMeta.from_json(api.project.get_meta(project_id_gt)).tag_metas
-    tags_pred = sly.ProjectMeta.from_json(api.project.get_meta(project_id_pred)).tag_metas
-    suffix = match_tags_input.get_value()
-    tags_pred_filtered = utils.filter_tags_by_suffix(tags_pred, suffix)
-    match_tags.set(tags_gt, tags_pred_filtered, "GT tags", "Pred tags", suffix=suffix)
-
     g.project_id_gt = project_id_gt
     g.project_id_pred = project_id_pred
-    g.tags_gt = tags_gt
-    g.tags_pred = tags_pred
-    g.tags_pred_filtered = tags_pred_filtered
+
+    rematch_tags()
+
     match_tags_card.uncollapse()
+    change_datasets_btn.show()
+    match_datasets_btn.disable()
+    card_gt.lock()
+    card_pred.lock()
+
+
+@change_datasets_btn.click
+def on_change_datasets():
+    reset_widgets()
 
 
 ### 3. Match Tags
 match_tags_input = Input("_nn")
+match_tags_rematch_btn = Button("Rematch tags", button_size="small")
+match_tags_rematch_c = Container([match_tags_input, match_tags_rematch_btn])
 match_tags_input_f = Field(
-    match_tags_input,
+    match_tags_rematch_c,
     "Input suffix for Pred tags",
-    "If there is no matching you want due to suffix, you can input it manually.",
+    "If there is no matching you want due to suffix (like '_nn'), you can input it manually.",
 )
 match_tags = MatchTagMetas(selectable=True)
 match_tags_btn = Button("Select")
-match_tags_container = Container([match_tags_input_f, match_tags, match_tags_btn])
+match_tags_notif_note = NotificationBox("Note:", box_type="info")
+match_tags_notif_warn = NotificationBox("Warning!", box_type="warning")
+match_tags_container = Container(
+    [match_tags_input_f, match_tags, match_tags_btn, match_tags_notif_note, match_tags_notif_warn]
+)
 match_tags_card = Card(
     "Select tags",
     "Choose tags/classes that will be used for metrics.",
     True,
     match_tags_container,
 )
-match_tags_card.collapse()
+
+
+@match_tags_rematch_btn.click
+def rematch_tags():
+    g.tags_gt = sly.ProjectMeta.from_json(api.project.get_meta(g.project_id_gt)).tag_metas
+    g.tags_pred = sly.ProjectMeta.from_json(api.project.get_meta(g.project_id_pred)).tag_metas
+    suffix = match_tags_input.get_value()
+    g.tags_pred_filtered = utils.filter_tags_by_suffix(g.tags_pred, suffix)
+    match_tags.set(g.tags_gt, g.tags_pred_filtered, "GT tags", "Pred tags", suffix=suffix)
 
 
 @match_tags_btn.click
-def on_match_tags():
-    metrics_card.uncollapse()
-    metrics_btn.enable()
+def on_select_tags():
+    selected_tags = match_tags.get_selected()
+    selected_tags_matched = list(
+        filter(lambda x: x[0] is not None and x[1] is not None, selected_tags)
+    )
+    if not g.is_tags_selected:
+        if selected_tags_matched:
+            match_tags_notif_note.description = (
+                f"{len(selected_tags_matched)} matched tags will be used for metrics."
+            )
+            match_tags_notif_note.show()
+            match_tags_btn.text = "Reselect tags"
+            match_tags_btn._plain = True
+            match_tags_btn._button_size = "small"
+            match_tags_btn.update_data()
+            DataJson().send_changes()
+            metrics_card.uncollapse()
+            metrics_btn.enable()
+            match_tags_input.disable()
+            match_tags_rematch_btn.disable()
+            g.is_tags_selected = True
+        else:
+            match_tags_notif_warn.description = f"Please, select at least 1 matched tag."
+            match_tags_notif_warn.show()
+    else:
+        match_tags_notif_note.hide()
+        match_tags_notif_warn.hide()
+        metrics_card.collapse()
+        metrics_btn.disable()
+        match_tags_input.enable()
+        match_tags_rematch_btn.enable()
+        match_tags_btn.text = "Select"
+        match_tags_btn._plain = False
+        match_tags_btn._button_size = None
+        match_tags_btn.update_data()
+        DataJson().send_changes()
+        g.is_tags_selected = False
 
 
 ### 4. Confusion Matrix & Metrics
@@ -143,14 +195,6 @@ metrics_card = Card(
     collapsable=True,
     content=metrics_tabs,
 )
-metrics_btn.disable()
-task_notif_box.hide()
-confusion_matrix_widget.hide()
-metrics_overall_table.hide()
-metrics_per_class_table.hide()
-metrics_per_image.hide()
-images_gallery.hide()
-metrics_card.collapse()
 
 
 @metrics_btn.click
@@ -314,10 +358,40 @@ def set_img_to_gallery(image_name):
     images_gallery.loading = False
 
 
+def reset_widgets():
+    change_datasets_btn.hide()
+    card_gt.unlock()
+    card_pred.unlock()
+    match_datasets_btn.enable()
+    match_tags_btn.enable()
+    match_datasets.set()
+    match_tags.set()
+    match_tags_card.collapse()
+    match_tags_notif_note.hide()
+    match_tags_notif_warn.hide()
+    metrics_btn.disable()
+    task_notif_box.hide()
+    confusion_matrix_widget.hide()
+    metrics_overall_table.hide()
+    metrics_per_class_table.hide()
+    metrics_per_image.hide()
+    images_gallery.hide()
+    metrics_card.collapse()
+    match_tags_input.enable()
+    g.is_tags_selected = False
+    match_tags_btn.text = "Select"
+    match_tags_btn._plain = False
+    match_tags_btn._button_size = None
+    match_tags_btn.update_data()
+    DataJson().send_changes()
+    match_tags_rematch_btn.enable()
+
+
 ### FINAL APP
 final_container = Container(
     [
         select_datasets_container,
+        change_datasets_btn,
         match_datasets_card,
         match_tags_card,
         metrics_btn,
@@ -327,3 +401,4 @@ final_container = Container(
     gap=15,
 )
 app = sly.Application(final_container)
+reset_widgets()
