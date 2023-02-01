@@ -291,12 +291,6 @@ def on_metrics_click():
     metrics_overall_table.show()
     metrics_per_class_table.show()
 
-    ### For debug:
-    # confusion_matrix = metric_utils.get_confusion_matrix(img2classes_gt, img2classes_pred, classes)
-    # print(confusion_matrix)
-    # print(metric_utils.get_metrics(gt, pred))
-    # print(report)
-
 
 @confusion_matrix_widget.click
 def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):

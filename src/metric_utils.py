@@ -77,38 +77,6 @@ def get_dataframes(
     return gt, pred
 
 
-def get_metrics(gt: pd.DataFrame, pred: pd.DataFrame):
-    gt, pred = gt.values, pred.values
-
-    acc = (gt == pred).mean(0)
-
-    P = gt == 1
-    N = ~P
-
-    PP = pred == 1
-    PN = ~PP
-
-    T = gt == pred
-    F = ~T
-
-    TP = T & PP
-    TN = T & PN
-    FP = F & PP
-    FN = F & PN
-
-    precision = TP.sum(0) / (0 + TP + FP).sum(0)
-    recall = TP.sum(0) / (0 + TP + FN).sum(0)
-
-    ### Filling NaNs
-    # p_exists = P.sum(0) > 0
-    # precision[np.isnan(precision) & p_exists] = 0.0
-    # precision[np.isnan(precision) & ~p_exists] = 1.0
-    # recall[np.isnan(recall) & p_exists] = 0.0
-    # recall[np.isnan(recall) & ~p_exists] = 1.0
-
-    return acc, precision, recall
-
-
 def filter_by_class(img2classes: dict, cls: str, not_in=False):
     img_names = []
     for img_name, img_classes in img2classes.items():
@@ -117,13 +85,6 @@ def filter_by_class(img2classes: dict, cls: str, not_in=False):
         if not_in is True and cls not in img_classes:
             img_names.append(img_name)
     return img_names
-
-
-# def check_is_task_multilabel(img2classes: dict):
-#     for img_name, classes in img2classes.items():
-#         if len(classes) > 1:
-#             return True
-#     return False
 
 
 # def bce(y_true, y_pred, eps=1e-7):

@@ -3,19 +3,6 @@ from itertools import chain
 from supervisely import TagMetaCollection, ImageInfo
 
 
-# def collect_ds_matching(ds_matching):
-#     img2tags_gt = {}
-#     img2tags_pred = {}
-#     for ds_name, ds_values in ds_matching.items():
-#         if ds_values["dataset_matched"] != "both":
-#             continue
-#         for img_pair in ds_values["matched"]:
-#             img_gt, img_pred = img_pair["left"], img_pair["right"]
-#             img2tags_gt[img_gt.name] = img_gt.tags
-#             img2tags_pred[img_pred.name] = img_pred.tags
-#     return img2tags_gt, img2tags_pred
-
-
 def collect_matching(ds_matching, tags_gt, tags_pred, selected_tags):
     selected_tags = list(filter(lambda x: bool(x[0]) and bool(x[1]), selected_tags))
     cls2clsGT = dict(map(reversed, selected_tags))
@@ -69,28 +56,11 @@ def collect_matching(ds_matching, tags_gt, tags_pred, selected_tags):
     )
 
 
-def tagId2name(img2tags: dict, tags: TagMetaCollection):
-    id2tag = tags.get_id_mapping()
-    return dict(map(lambda img, tag: (img, id2tag[tag["tagId"]].name), *img2tags.items()))
-
-
-def collect_tag_matching(tag_matching):
-    selected_tags = []
-    selected_tags = tag_matching["match"]
-    return selected_tags
-
-
 def filter_imgs_without_tags_(img2tags_gt: dict, img2tags_pred: dict):
     for k, tags in list(img2tags_gt.items()):
         if len(tags) == 0:
             img2tags_gt.pop(k)
             img2tags_pred.pop(k, None)
-
-
-def filter_imgs_(img2tags: dict, remove_keys):
-    filtered = img2tags.copy()
-    for k in remove_keys:
-        del filtered[k]
 
 
 def is_task_multilabel(img2tags_gt: dict):
