@@ -24,6 +24,7 @@ from supervisely.app.widgets import (
     Tabs,
     NotificationBox,
     GridGallery,
+    Text,
 )
 
 from src import metric_utils
@@ -183,18 +184,11 @@ def on_select_tags():
 task_notif_box = NotificationBox("Note:")
 metrics_btn = Button("Calculate metrics")
 confusion_matrix_widget = ConfusionMatrix()
-metrics_per_image = Table()
-images_gallery = GridGallery(2, show_opacity_slider=False)
 metrics_overall_table = Table()
 metrics_overall_table_f = Field(metrics_overall_table, "Overall project metrics")
 metrics_per_class_table = Table()
 metrics_per_class_table_f = Field(metrics_per_class_table, "Per-class metrics")
-metrics_tab_confusion_matrix = Container(
-    [
-        confusion_matrix_widget,
-        Container([metrics_per_image, images_gallery], direction="horizontal", fractions=[5, 5]),
-    ]
-)
+metrics_tab_confusion_matrix = Container([confusion_matrix_widget])
 metrics_tabs = Tabs(
     ["Confusion matrix", "Per class", "Overall"],
     [metrics_tab_confusion_matrix, metrics_per_class_table_f, metrics_overall_table_f],
@@ -204,6 +198,26 @@ metrics_card = Card(
     "",
     collapsable=True,
     content=metrics_tabs,
+)
+metrics_per_image = Table()
+per_image_notification_box = NotificationBox(
+    title="Table for clicked datapoint from Confusion Matrix", description=""
+)
+card_per_image_table = Card(
+    title="Per image metrics",
+    description="Click on table row to preview image",
+    collapsable=True,
+    content=Container([per_image_notification_box, metrics_per_image], gap=5),
+)
+current_image_tag = Text()
+images_gallery = GridGallery(
+    2, show_opacity_slider=False, enable_zoom=True, resize_on_zoom=True, sync_views=True
+)
+card_img_preview = Card(
+    title="Image preview",
+    description="Ground Truth (left) and Prediction (right)",
+    collapsable=True,
+    content=Container([current_image_tag, images_gallery], gap=5),
 )
 
 
@@ -298,18 +312,14 @@ def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
         img_names2 = metric_utils.filter_by_class(g.img2classes_pred, cls_gt, True)
     img_names = list(set(img_names1) & set(img_names2))
 
-    columns = ["GT_IMG_ID", "PRED_IMG_ID", "NAME", "TP", "FP", "FN"]  # ["link"]
-    # tags from img names
-    # img2classes_gt {img_nmae: [tag]}
-    # tag_meta from tags_gt, pred
-    # img_name_2_img_id_gt - ID
-    # img_name to image_info
+    columns = ["GT_IMG_ID", "PRED_IMG_ID", "NAME", "TP", "FP", "FN", "PREVIEW"]
     rows = [
         [
             g.img_name_2_img_info_gt[image_name].id,
             g.img_name_2_img_info_pred[image_name].id,
             image_name,
             *metric_utils.img_metrics(g.img2classes_gt[image_name], g.img2classes_pred[image_name]),
+            Table.create_button("preview"),
         ]
         for image_name in img_names
     ]
@@ -317,8 +327,17 @@ def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
     df = pd.DataFrame(rows, columns=columns)
     metrics_per_image.read_pandas(df)
     metrics_per_image.show()
+    if cell.row_name != "None" and cell.column_name != "None":
+        per_image_notification_box.description = f"{cell.cell_value} images with tag '{cell.row_name}' in ground truth label and '{cell.column_name}' tag in prediction label."
+    elif cell.row_name != "None":
+        per_image_notification_box.description = f"{cell.cell_value} images with tag '{cell.row_name}' in ground truth label and missing '{cell.row_name}' tag in prediction label."
+    elif cell.column_name != "None":
+        per_image_notification_box.description = f"{cell.cell_value} images without tag '{cell.column_name}' in ground truth label and with '{cell.column_name}' tag in prediction label."
+    card_per_image_table.uncollapse()
     set_img_to_gallery(img_names[0])
+    current_image_tag.text = f"Image: {img_names[0]}"
     images_gallery.show()
+    card_img_preview.uncollapse()
 
 
 @metrics_per_image.click
@@ -329,6 +348,7 @@ def select_image_row(cell: Table.ClickedDataPoint):
 
 def set_img_to_gallery(image_name):
     images_gallery.loading = True
+    current_image_tag.text = f"Image: {image_name}"
     img_tags_gt = []
     for tag_json in g.img_name_2_img_info_gt[image_name].tags:
         if "name" not in tag_json.keys():
@@ -341,6 +361,13 @@ def set_img_to_gallery(image_name):
         tag = sly.Tag.from_json(tag_json, g.tags_gt)
         img_tags_gt.append(tag)
 
+    # sort all tags with values
+    img_tags_gt_values = [tag for tag in img_tags_gt if tag.meta.value_type == "any_number"]
+    img_tags_gt_values = sorted(img_tags_gt_values, key=lambda item: item.value, reverse=True)
+    img_tags_gt = img_tags_gt_values + [
+        tag for tag in img_tags_gt if tag.meta.value_type != "any_number"
+    ]
+
     img_tags_pred = []
     for tag_json in g.img_name_2_img_info_pred[image_name].tags:
         if "name" not in tag_json.keys():
@@ -352,6 +379,13 @@ def set_img_to_gallery(image_name):
                     break
         tag = sly.Tag.from_json(tag_json, g.tags_pred)
         img_tags_pred.append(tag)
+
+    # sort all tags with values
+    img_tags_pred_values = [tag for tag in img_tags_pred if tag.meta.value_type == "any_number"]
+    img_tags_pred_values = sorted(img_tags_pred_values, key=lambda item: item.value, reverse=True)
+    img_tags_pred = img_tags_pred_values + [
+        tag for tag in img_tags_pred if tag.meta.value_type != "any_number"
+    ]
 
     img_info_gt = g.img_name_2_img_info_gt[image_name]
     img_info_pred = g.img_name_2_img_info_pred[image_name]
@@ -389,6 +423,8 @@ def reset_widgets():
     metrics_per_image.hide()
     images_gallery.hide()
     metrics_card.collapse()
+    card_per_image_table.collapse()
+    card_img_preview.collapse()
     match_tags_input.enable()
     g.is_tags_selected = False
     match_tags_btn.text = "Select"
@@ -410,6 +446,9 @@ final_container = Container(
         metrics_btn,
         task_notif_box,
         metrics_card,
+        Container(
+            [card_per_image_table, card_img_preview], direction="horizontal", fractions=[5, 5]
+        ),
     ],
     gap=15,
 )
