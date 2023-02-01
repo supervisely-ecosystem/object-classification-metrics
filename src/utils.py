@@ -135,14 +135,14 @@ def get_per_class_metrics(report, mlcm, classes):
     return df
 
 
-def stringify_label_tags(predicted_tags, is_multilabel):
+def stringify_label_tags(predicted_tags, is_multilabel, is_gt):
     final_message = ""
 
     for index, tag in enumerate(predicted_tags):
         value = ""
         if tag.value is not None:
             value = f":{round(tag.value, 3)}"
-        if not is_multilabel:
+        if not is_multilabel and not is_gt and len(predicted_tags) > 1:
             final_message += f"top@{index + 1} — "
         final_message += f"{tag.name}{value}<br>"
 
@@ -153,11 +153,11 @@ def get_preview_image_pair(img_info_gt, img_info_pred, img_tags_gt, img_tags_pre
     return [
         {
             "url": img_info_gt.full_storage_url,
-            "title": stringify_label_tags(img_tags_gt, is_multilabel),
+            "title": stringify_label_tags(img_tags_gt, is_multilabel, True),
         },
         {
             "url": img_info_pred.full_storage_url,
-            "title": stringify_label_tags(img_tags_pred, is_multilabel),
+            "title": stringify_label_tags(img_tags_pred, is_multilabel, False),
         },
     ]
 

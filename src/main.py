@@ -135,9 +135,9 @@ match_tags_card = Card(
 def rematch_tags():
     g.tags_gt = sly.ProjectMeta.from_json(api.project.get_meta(g.project_id_gt)).tag_metas
     g.tags_pred = sly.ProjectMeta.from_json(api.project.get_meta(g.project_id_pred)).tag_metas
-    suffix = match_tags_input.get_value()
-    g.tags_pred_filtered = utils.filter_tags_by_suffix(g.tags_pred, suffix)
-    match_tags.set(g.tags_gt, g.tags_pred_filtered, "GT tags", "Pred tags", suffix=suffix)
+    g.suffix = match_tags_input.get_value()
+    g.tags_pred_filtered = utils.filter_tags_by_suffix(g.tags_pred, g.suffix)
+    match_tags.set(g.tags_gt, g.tags_pred_filtered, "GT tags", "Pred tags", suffix=g.suffix)
 
 
 @match_tags_btn.click
@@ -312,13 +312,24 @@ def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
         img_names2 = metric_utils.filter_by_class(g.img2classes_pred, cls_gt, True)
     img_names = list(set(img_names1) & set(img_names2))
 
-    columns = ["GT_IMG_ID", "PRED_IMG_ID", "NAME", "TP", "FP", "FN", "PREVIEW"]
+    if g.is_multilabel:
+        columns = ["GT_IMG_ID", "PRED_IMG_ID", "NAME", "TP", "FP", "FN", "PREVIEW"]
+    else:
+        columns = ["GT_IMG_ID", "PRED_IMG_ID", "NAME", "Is correct", "PREVIEW"]
     rows = [
         [
             g.img_name_2_img_info_gt[image_name].id,
             g.img_name_2_img_info_pred[image_name].id,
             image_name,
-            *metric_utils.img_metrics(g.img2classes_gt[image_name], g.img2classes_pred[image_name]),
+            *metric_utils.img_metrics(
+                get_sorted_image_tags(g.img_name_2_img_info_gt[image_name], g.tags_gt),
+                get_sorted_image_tags(
+                    g.img_name_2_img_info_pred[image_name],
+                    g.tags_pred_filtered,
+                ),
+                g.is_multilabel,
+                suffix=g.suffix,
+            ),
             Table.create_button("preview"),
         ]
         for image_name in img_names
@@ -346,49 +357,35 @@ def select_image_row(cell: Table.ClickedDataPoint):
     set_img_to_gallery(image_name)
 
 
+def get_sorted_image_tags(img_info, tag_meta_collection):
+    img_tags = []
+    for tag_json in img_info.tags:
+        if "name" not in tag_json.keys():
+            sly_id = tag_json["tagId"]
+            for tag_meta in tag_meta_collection:
+                tag_meta: sly.TagMeta
+                if tag_meta.sly_id == sly_id:
+                    tag_json["name"] = tag_meta.name
+                    break
+        tag = sly.Tag.from_json(tag_json, tag_meta_collection)
+        img_tags.append(tag)
+
+    # sort all tags with values
+    img_tags_values = [tag for tag in img_tags if tag.meta.value_type == "any_number"]
+    img_tags_values = sorted(img_tags_values, key=lambda item: item.value, reverse=True)
+    return img_tags_values + [tag for tag in img_tags if tag.meta.value_type != "any_number"]
+
+
 def set_img_to_gallery(image_name):
     images_gallery.loading = True
     current_image_tag.text = f"Image: {image_name}"
-    img_tags_gt = []
-    for tag_json in g.img_name_2_img_info_gt[image_name].tags:
-        if "name" not in tag_json.keys():
-            sly_id = tag_json["tagId"]
-            for tag_meta in g.tags_gt:
-                tag_meta: sly.TagMeta
-                if tag_meta.sly_id == sly_id:
-                    tag_json["name"] = tag_meta.name
-                    break
-        tag = sly.Tag.from_json(tag_json, g.tags_gt)
-        img_tags_gt.append(tag)
-
-    # sort all tags with values
-    img_tags_gt_values = [tag for tag in img_tags_gt if tag.meta.value_type == "any_number"]
-    img_tags_gt_values = sorted(img_tags_gt_values, key=lambda item: item.value, reverse=True)
-    img_tags_gt = img_tags_gt_values + [
-        tag for tag in img_tags_gt if tag.meta.value_type != "any_number"
-    ]
-
-    img_tags_pred = []
-    for tag_json in g.img_name_2_img_info_pred[image_name].tags:
-        if "name" not in tag_json.keys():
-            sly_id = tag_json["tagId"]
-            for tag_meta in g.tags_pred:
-                tag_meta: sly.TagMeta
-                if tag_meta.sly_id == sly_id:
-                    tag_json["name"] = tag_meta.name
-                    break
-        tag = sly.Tag.from_json(tag_json, g.tags_pred)
-        img_tags_pred.append(tag)
-
-    # sort all tags with values
-    img_tags_pred_values = [tag for tag in img_tags_pred if tag.meta.value_type == "any_number"]
-    img_tags_pred_values = sorted(img_tags_pred_values, key=lambda item: item.value, reverse=True)
-    img_tags_pred = img_tags_pred_values + [
-        tag for tag in img_tags_pred if tag.meta.value_type != "any_number"
-    ]
 
     img_info_gt = g.img_name_2_img_info_gt[image_name]
     img_info_pred = g.img_name_2_img_info_pred[image_name]
+
+    img_tags_gt = get_sorted_image_tags(img_info_gt, g.tags_gt)
+    img_tags_pred = get_sorted_image_tags(img_info_pred, g.tags_pred)
+
     images_for_preview = utils.get_preview_image_pair(
         img_info_gt,
         img_info_pred,

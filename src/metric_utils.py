@@ -133,10 +133,28 @@ def filter_by_class(img2classes: dict, cls: str, not_in=False):
 #     return -np.mean(term_0 + term_1, axis=0)
 
 
-def img_metrics(gt_tags, pred_tags):
-    gt_tags = set(gt_tags)
-    pred_tags = set(pred_tags)
-    tp = len(gt_tags & pred_tags)
-    fp = len(pred_tags - gt_tags)
-    fn = len(gt_tags - pred_tags)
-    return [tp, fp, fn]
+def img_metrics(gt_tags, pred_tags, is_multilabel, suffix=None):
+    if is_multilabel:
+        if suffix is not None:
+            pred_tags = [
+                tag.name[: -len(suffix)] if tag.name.endswith(suffix) else tag.name
+                for tag in pred_tags
+            ]
+        else:
+            pred_tags = [tag.name for tag in pred_tags]
+
+        gt_tags = [tag.name for tag in gt_tags]
+        gt_tags = set(gt_tags)
+        pred_tags = set(pred_tags)
+        tp = len(gt_tags & pred_tags)
+        fp = len(pred_tags - gt_tags)
+        fn = len(gt_tags - pred_tags)
+        return [tp, fp, fn]
+    else:  # single-label
+        gt_tags = gt_tags[0].name
+        if suffix is not None and pred_tags[0].name.endswith(suffix):
+            pred_tags = pred_tags[0].name[: -len(suffix)]
+        else:
+            pred_tags = pred_tags[0].name
+        correct = gt_tags == pred_tags
+        return [correct]
