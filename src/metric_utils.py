@@ -56,8 +56,9 @@ def get_confusion_matrix(img2classes_gt: dict, img2classes_pred: dict, classes: 
     return confusion_matrix
 
 
-def get_dataframes(img2classes_gt: dict, img2classes_pred: dict, classes: list):
-    # добавить поддержку single-label здесь?
+def get_dataframes(
+    img2classes_gt: dict, img2classes_pred: dict, classes: list, is_single_label=True
+):
 
     assert img2classes_gt.keys() == img2classes_pred.keys()
 
@@ -66,6 +67,10 @@ def get_dataframes(img2classes_gt: dict, img2classes_pred: dict, classes: list):
 
     for i, (img_name, classes_gt) in enumerate(img2classes_gt.items()):
         classes_pred = img2classes_pred[img_name]
+        if is_single_label:
+            # taking the first item as we already has sorted by conf earlier
+            classes_gt = classes_gt[0] if len(classes_gt) else "None"
+            classes_pred = classes_pred[0] if len(classes_pred) else "None"
         gt.loc[i, classes_gt] = 1
         pred.loc[i, classes_pred] = 1
 

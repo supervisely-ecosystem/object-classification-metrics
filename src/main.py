@@ -251,7 +251,9 @@ def on_metrics_click():
     DataJson().send_changes()
 
     ### Calculate metrics
-    gt, pred = metric_utils.get_dataframes(img2classes_gt, img2classes_pred, classes)
+    gt, pred = metric_utils.get_dataframes(
+        img2classes_gt, img2classes_pred, classes, not g.is_multilabel
+    )
     report = sklearn.metrics.classification_report(
         gt.values, pred.values, target_names=classes, output_dict=True
     )
