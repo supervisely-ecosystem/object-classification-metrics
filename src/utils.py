@@ -160,3 +160,11 @@ def get_preview_image_pair(img_info_gt, img_info_pred, img_tags_gt, img_tags_pre
             "title": stringify_label_tags(img_tags_pred, is_multilabel),
         },
     ]
+
+
+def validate_dataset_match(ds_matching):
+    matched_ds = []
+    for ds_name, ds_values in ds_matching.items():
+        if ds_values["dataset_matched"] == "both" and len(ds_values["matched"]):
+            matched_ds.append(ds_name)
+    return matched_ds

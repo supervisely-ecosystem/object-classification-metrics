@@ -59,7 +59,12 @@ change_datasets_btn = Button("Change Datasets", "info", "small", plain=True)
 ### 2. Match Datasets
 match_datasets = MatchDatasets()
 match_datasets_btn = Button("Match")
-match_datasets_container = Container([match_datasets, match_datasets_btn])
+match_datasets_warn = NotificationBox(
+    "Not matched.",
+    "Datasets don't match. Please, check your dataset/image names. They must match",
+    box_type="warning",
+)
+match_datasets_container = Container([match_datasets, match_datasets_btn, match_datasets_warn])
 match_datasets_card = Card(
     "Match datasets",
     "Datasets and their images are compared by name. Only matched pairs of images are used in metrics.",
@@ -70,14 +75,19 @@ match_datasets_card = Card(
 
 @match_datasets_btn.click
 def on_match_datasets():
-    project_id_gt = select_dataset_gt._project_id
-    project_id_pred = select_dataset_pred._project_id
+    match_datasets_warn.hide()
+    project_id_gt = select_dataset_gt._project_selector.get_selected_id()
+    project_id_pred = select_dataset_pred._project_selector.get_selected_id()
     if project_id_gt is None or project_id_pred is None:
         raise Exception("Please, select a project and datasets")
     ds_gt = api.dataset.get_list(project_id_gt)
     ds_pred = api.dataset.get_list(project_id_pred)
 
     match_datasets.set(ds_gt, ds_pred, "GT datasets", "Pred datasets")
+    ds_matching = match_datasets.get_stat()
+    if len(utils.validate_dataset_match(ds_matching)) == 0:
+        match_datasets_warn.show()
+        return
 
     g.project_id_gt = project_id_gt
     g.project_id_pred = project_id_pred
@@ -108,7 +118,7 @@ match_tags_input_f = Field(
 match_tags = MatchTagMetas(selectable=True)
 match_tags_btn = Button("Select")
 match_tags_notif_note = NotificationBox("Note:", box_type="info")
-match_tags_notif_warn = NotificationBox("Warning!", box_type="warning")
+match_tags_notif_warn = NotificationBox("Not selected.", box_type="warning")
 match_tags_container = Container(
     [match_tags_input_f, match_tags, match_tags_btn, match_tags_notif_note, match_tags_notif_warn]
 )
@@ -131,6 +141,8 @@ def rematch_tags():
 
 @match_tags_btn.click
 def on_select_tags():
+    match_tags_notif_note.hide()
+    match_tags_notif_warn.hide()
     selected_tags = match_tags.get_selected()
     selected_tags_matched = list(
         filter(lambda x: x[0] is not None and x[1] is not None, selected_tags)
@@ -155,8 +167,6 @@ def on_select_tags():
             match_tags_notif_warn.description = f"Please, select at least 1 matched tag."
             match_tags_notif_warn.show()
     else:
-        match_tags_notif_note.hide()
-        match_tags_notif_warn.hide()
         metrics_card.collapse()
         metrics_btn.disable()
         match_tags_input.enable()
@@ -385,6 +395,7 @@ def reset_widgets():
     match_tags_btn.update_data()
     DataJson().send_changes()
     match_tags_rematch_btn.enable()
+    match_datasets_warn.hide()
 
 
 ### FINAL APP
