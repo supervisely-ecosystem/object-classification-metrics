@@ -7,7 +7,7 @@
   "port": 8000,
   "icon": "https://user-images.githubusercontent.com/97401023/216119687-69ba445b-95a9-4353-8663-6d7352b3fbb3.png",
   "icon_background": "#FFFFFF",
-  "poster": "https://user-images.githubusercontent.com/115161827/211832844-522b444d-4534-4b5e-bf12-14c7e7d3aeec.png",
+  "poster": "https://user-images.githubusercontent.com/97401023/216125503-54544e16-a36e-453f-9b23-ba7729adb3e8.png",
   "categories": [
     "neural network",
     "classification",
@@ -18,7 +18,6 @@
     "visualization stats"
   ],
   "context_menu": {
-    "target": ["images_project"],
     "context_category": "Reports & Stats"
   },
   "min_instance_version": "6.6.7"
