@@ -37,8 +37,8 @@ load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 api = sly.Api()
 
-project_id_gt = os.environ.get("project_id_gt")
-project_id_pred = os.environ.get("project_id_pred") or os.environ.get("PROJECT_ID")
+project_id_gt = None  # os.environ.get("project_id_gt")
+project_id_pred = None  # os.environ.get("project_id_pred") or os.environ.get("PROJECT_ID")
 
 
 ### 1. Select Datasets
