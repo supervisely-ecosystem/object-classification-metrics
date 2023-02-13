@@ -64,6 +64,7 @@ def get_dataframes(
 
     gt = pd.DataFrame(np.zeros((len(img2classes_gt), len(classes)), dtype=int), columns=classes)
     pred = pd.DataFrame(np.zeros((len(img2classes_gt), len(classes)), dtype=int), columns=classes)
+    img_names = []
 
     for i, (img_name, classes_gt) in enumerate(img2classes_gt.items()):
         classes_pred = img2classes_pred[img_name]
@@ -73,8 +74,55 @@ def get_dataframes(
             classes_pred = classes_pred[0] if len(classes_pred) else "None"
         gt.loc[i, classes_gt] = 1
         pred.loc[i, classes_pred] = 1
+        img_names.append(img_name)
 
-    return gt, pred
+    return gt, pred, img_names
+
+
+def get_confusion_matrix_multilabel_2(
+    gt: pd.DataFrame, pred: pd.DataFrame, img_names: list, weighting_mode="none"
+):
+    weighting_mode = weighting_mode.lower()
+    assert weighting_mode in ["none", "gt", "pred", "sample"]
+    cols = list(gt.columns) + ["None"]
+    n = len(cols)
+    dtype = int if weighting_mode is None else float
+    confusion_matrix = pd.DataFrame(np.zeros((n, n), dtype=dtype), columns=cols, index=cols)
+    cells = [[[] for j in range(n)] for i in range(n)]
+    confusion_matrix_imgs = pd.DataFrame(cells, columns=cols, index=cols)
+    for gt_row, pred_row, img_name in zip(gt.values, pred.values, img_names):
+        matched_mask = gt_row & pred_row
+        matched_idxs = matched_mask.nonzero()[0]
+
+        unmatched_mask = np.logical_xor(gt_row, pred_row)
+        has_unmatched = np.any(unmatched_mask)
+        wrong_idxs_gt = (gt_row & unmatched_mask).nonzero()[0]
+        wrong_idxs_pred = (pred_row & unmatched_mask).nonzero()[0]
+        if has_unmatched and not len(wrong_idxs_gt):
+            wrong_idxs_gt = [-1]
+        if has_unmatched and not len(wrong_idxs_pred):
+            wrong_idxs_pred = [-1]
+
+        if weighting_mode == "none":
+            value = 1
+        elif weighting_mode == "gt":
+            value = 1 / len(wrong_idxs_gt)
+        elif weighting_mode == "pred":
+            value = 1 / len(wrong_idxs_pred)
+        elif weighting_mode == "sample":
+            value = 1 / (len(wrong_idxs_gt) + len(wrong_idxs_pred))
+
+        if has_unmatched:
+            confusion_matrix.iloc[wrong_idxs_gt, wrong_idxs_pred] += value
+            confusion_matrix_imgs.iloc[wrong_idxs_gt, wrong_idxs_pred] = confusion_matrix_imgs.iloc[
+                wrong_idxs_gt, wrong_idxs_pred
+            ].applymap(lambda x: x + [img_name])
+        if len(matched_idxs):
+            confusion_matrix.values[matched_idxs, matched_idxs] += value
+            for i in matched_idxs:
+                confusion_matrix_imgs.iloc[i, i].append(img_name)
+
+    return confusion_matrix, confusion_matrix_imgs
 
 
 def filter_by_class(img2classes: dict, cls: str, not_in=False):
