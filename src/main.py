@@ -313,7 +313,8 @@ def on_metrics_click():
     confusion_matrix_widget.show()
     metrics_overall_table.show()
     metrics_per_class_table.show()
-    multilable_mode_switch_f.show()
+    if g.is_multilabel:
+        multilable_mode_switch_f.show()
 
 
 @confusion_matrix_widget.click
