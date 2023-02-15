@@ -25,7 +25,7 @@ This app is an interactive visualization for classification metrics. It allows t
 
 Application key points:
 
-- Available single-label and multi-label classification tasks
+- Available single-label and multi-label classification tasks (that is auto-detected)
 - Supports image tags
 - Supports matching tags with suffixes
 - Supports top-k predictions for single-label classification task
