@@ -40,7 +40,7 @@ Application key points:
 5. Check the tabs "Overall" and "Per class" to see the metrics like precision, recall, f1-score and others.
 
 
-## Implementation details for confusion matrix in multi-label task
+## Confusion Matrix implementation details for multi-label task
 
 Visualizing the Confusion Matrix for a multi-label task is ambiguous. For example in `scikit-learn` there is a [multilabel_confusion_matrix](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.multilabel_confusion_matrix.html) method that returns a 3D `multi_confusion` matrix which can not be visualized in a table.
 

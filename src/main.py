@@ -26,6 +26,7 @@ from supervisely.app.widgets import (
     GridGallery,
     Text,
     Checkbox,
+    Switch,
 )
 
 from src import metric_utils
@@ -190,9 +191,19 @@ metrics_overall_table = Table()
 metrics_overall_table_f = Field(metrics_overall_table, "Overall project metrics")
 metrics_per_class_table = Table()
 metrics_per_class_table_f = Field(metrics_per_class_table, "Per-class metrics")
-multilable_mode_checkbox = Checkbox("New version", checked=False)
+multilable_mode_switch = Switch(switched=False)
+multilable_mode_text = Text(
+    "<i style='color:gray;'>(more details in <a href='https://ecosystem.supervise.ly/apps/classification-metrics#Confusion-Matrix-implementation-details-for-multi-label-task' target='_blank'>Readme</a>)</i>"
+)
+multilable_mode_desc = Container([multilable_mode_text, multilable_mode_switch])
+multilable_mode_switch_f = Field(
+    multilable_mode_desc,
+    "Count all combinations for misclassified tags",
+    "Turning it on, you may get more insights about which classes the model most often confuses, "
+    "but the values in the table will not actually mean the number of misclassified images, but rather misclassified tags.",
+)
 metrics_tab_confusion_matrix = Container(
-    [confusion_matrix_widget, multilable_mode_checkbox], gap=20
+    [confusion_matrix_widget, multilable_mode_switch_f], gap=20
 )
 metrics_tabs = Tabs(
     ["Confusion matrix", "Per class", "Overall"],
@@ -260,7 +271,7 @@ def on_metrics_click():
     )
 
     ### Calculate confusion_matrix
-    if g.is_multilabel and multilable_mode_checkbox.is_checked():
+    if g.is_multilabel and multilable_mode_switch.is_switched():
         confusion_matrix, confusion_matrix_imgs = metric_utils.get_confusion_matrix_multilabel_2(
             gt, pred, img_names
         )
@@ -302,13 +313,14 @@ def on_metrics_click():
     confusion_matrix_widget.show()
     metrics_overall_table.show()
     metrics_per_class_table.show()
+    multilable_mode_switch_f.show()
 
 
 @confusion_matrix_widget.click
 def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
     cls_gt = cell.row_name
     cls_pred = cell.column_name
-    if not multilable_mode_checkbox.is_checked():
+    if not multilable_mode_switch.is_switched():
         # Old method
         if cls_gt != "None":
             img_names1 = metric_utils.filter_by_class(g.img2classes_gt, cls_gt)
@@ -349,12 +361,13 @@ def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
     df = pd.DataFrame(rows, columns=columns)
     metrics_per_image.read_pandas(df)
     metrics_per_image.show()
+    cell_value = int(cell.cell_value)
     if cell.row_name != "None" and cell.column_name != "None":
-        per_image_notification_box.description = f"{int(cell.cell_value)} images with tag '{cell.row_name}' in ground truth label and '{cell.column_name}' tag in prediction label."
+        per_image_notification_box.description = f"{int(cell_value)} images with tag '{cell.row_name}' in ground truth label and '{cell.column_name}' tag in prediction label."
     elif cell.row_name != "None":
-        per_image_notification_box.description = f"{cell.cell_value} images with tag '{cell.row_name}' in ground truth label and missing '{cell.row_name}' tag in prediction label."
+        per_image_notification_box.description = f"{int(cell_value)} images with tag '{cell.row_name}' in ground truth label and missing '{cell.row_name}' tag in prediction label."
     elif cell.column_name != "None":
-        per_image_notification_box.description = f"{cell.cell_value} images without tag '{cell.column_name}' in ground truth label and with '{cell.column_name}' tag in prediction label."
+        per_image_notification_box.description = f"{int(cell_value)} images without tag '{cell.column_name}' in ground truth label and with '{cell.column_name}' tag in prediction label."
     card_per_image_table.uncollapse()
     set_img_to_gallery(img_names[0])
     current_image_tag.text = f"Image: {img_names[0]}"
@@ -362,7 +375,7 @@ def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
     card_img_preview.uncollapse()
 
 
-@multilable_mode_checkbox.value_changed
+@multilable_mode_switch.value_changed
 def on_mode_changed(is_checked):
     on_metrics_click()
 
@@ -447,6 +460,8 @@ def reset_widgets():
     DataJson().send_changes()
     match_tags_rematch_btn.enable()
     match_datasets_warn.hide()
+    multilable_mode_switch.off()
+    multilable_mode_switch_f.hide()
 
 
 ### FINAL APP
