@@ -39,6 +39,29 @@ Application key points:
 4. Click "Calculate" and explore the confusion matrix below (step 4). Click on the cells to see the per image stats for any interesting cases, where the model gets right or wrong. You can display images with target and predicted tags by click on rows of per images stats table.
 5. Check the tabs "Overall" and "Per class" to see the metrics like precision, recall, f1-score and others.
 
+
+## Confusion Matrix implementation details for multi-label task
+
+Visualizing the Confusion Matrix for a multi-label task is ambiguous. For example in `scikit-learn` there is a [multilabel_confusion_matrix](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.multilabel_confusion_matrix.html) method that returns a 3D `multi_confusion` matrix which can not be visualized in a table.
+
+**What's the problem?**
+
+Consider an example: we have an image with GT classes ["dog", "cat"] and predictions ["bird"]. There are two ways how to interpret this case and thus have two implementations in the app.
+
+1. We might say the model haven't found the dog and the cat, and have wrongly detected a bird. This way the dog and cat are False Negatives and the bird is False Positive and we add it to "None" in confusion matrix:
+
+    <img src="https://user-images.githubusercontent.com/31512713/219029394-ce851e44-6080-41f8-a58f-8ee48ba85a26.png" width=500/>
+
+    This way only the diagonal (True Positives) values and None values will be non zero in the matrix. This may not be too useful for the model evaluation.
+
+
+2. There is another interpretation. We might say the model have confused a bird with either the dog or the cat. But how to determine exactly which class was confused with which? There is no obvious way. So, we can only treat that the both dog and cat were confused with a bird. And the matrix will be as follows:
+
+    <img src="https://user-images.githubusercontent.com/31512713/219029449-d732004c-5d7d-4c93-b839-51cda52859e1.png" width=500/>
+
+    This way we will be adding excessively many misclassified values (especially in cases when you are working with a large number of classes. e.g: the model predicted 3 wrong classes and in GT were 3 another classes, there will be 3x3=9 misclassified values). So, use it carefully!
+
+
 # Related apps
 
 1. [Train MMClassification](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/mmclassification/supervisely/train) app to train classification model on your data 

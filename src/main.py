@@ -25,6 +25,8 @@ from supervisely.app.widgets import (
     NotificationBox,
     GridGallery,
     Text,
+    Checkbox,
+    Switch,
 )
 
 from src import metric_utils
@@ -37,9 +39,10 @@ load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 api = sly.Api()
 
-project_id_gt = None  # os.environ.get("project_id_gt")
-project_id_pred = None  # os.environ.get("project_id_pred") or os.environ.get("PROJECT_ID")
-
+project_id_gt = None
+project_id_pred = None
+# project_id_gt = 16744
+# project_id_pred = 16778
 
 ### 1. Select Datasets
 select_dataset_gt = SelectDataset(project_id=project_id_gt, multiselect=True)
@@ -188,7 +191,20 @@ metrics_overall_table = Table()
 metrics_overall_table_f = Field(metrics_overall_table, "Overall project metrics")
 metrics_per_class_table = Table()
 metrics_per_class_table_f = Field(metrics_per_class_table, "Per-class metrics")
-metrics_tab_confusion_matrix = Container([confusion_matrix_widget])
+multilable_mode_switch = Switch(switched=False)
+multilable_mode_text = Text(
+    "<i style='color:gray;'>(more details in <a href='https://ecosystem.supervise.ly/apps/classification-metrics#Confusion-Matrix-implementation-details-for-multi-label-task' target='_blank'>Readme</a>)</i>"
+)
+multilable_mode_desc = Container([multilable_mode_text, multilable_mode_switch])
+multilable_mode_switch_f = Field(
+    multilable_mode_desc,
+    "Count all combinations for misclassified tags",
+    "Turning it on, you may get more insights about which classes the model most often confuses, "
+    "but the values in the table will not actually mean the number of misclassified images, but rather misclassified tags.",
+)
+metrics_tab_confusion_matrix = Container(
+    [confusion_matrix_widget, multilable_mode_switch_f], gap=20
+)
 metrics_tabs = Tabs(
     ["Confusion matrix", "Per class", "Overall"],
     [metrics_tab_confusion_matrix, metrics_per_class_table_f, metrics_overall_table_f],
@@ -250,24 +266,31 @@ def on_metrics_click():
         task_notif_box.description = "Treating the task as a single-label classification"
     task_notif_box.show()
 
+    gt, pred, img_names = metric_utils.get_dataframes(
+        img2classes_gt, img2classes_pred, classes, False
+    )
+
     ### Calculate confusion_matrix
-    if g.is_multilabel:
-        confusion_matrix = metric_utils.get_confusion_matrix_multilabel(
-            img2classes_gt, img2classes_pred, classes
+    if g.is_multilabel and multilable_mode_switch.is_switched():
+        confusion_matrix, confusion_matrix_imgs = metric_utils.get_confusion_matrix_multilabel_2(
+            gt, pred, img_names
         )
+        g.confusion_matrix_imgs = confusion_matrix_imgs
     else:
-        confusion_matrix = metric_utils.get_confusion_matrix(
-            img2classes_gt, img2classes_pred, classes
-        )
+        if g.is_multilabel:
+            confusion_matrix = metric_utils.get_confusion_matrix_multilabel(
+                img2classes_gt, img2classes_pred, classes
+            )
+        else:
+            confusion_matrix = metric_utils.get_confusion_matrix(
+                img2classes_gt, img2classes_pred, classes
+            )
 
     confusion_matrix_widget._update_matrix_data(confusion_matrix)
     confusion_matrix_widget.update_data()
     DataJson().send_changes()
 
     ### Calculate metrics
-    gt, pred = metric_utils.get_dataframes(
-        img2classes_gt, img2classes_pred, classes, not g.is_multilabel
-    )
     report = sklearn.metrics.classification_report(
         gt.values, pred.values, target_names=classes, output_dict=True
     )
@@ -290,21 +313,28 @@ def on_metrics_click():
     confusion_matrix_widget.show()
     metrics_overall_table.show()
     metrics_per_class_table.show()
+    if g.is_multilabel:
+        multilable_mode_switch_f.show()
 
 
 @confusion_matrix_widget.click
 def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
     cls_gt = cell.row_name
     cls_pred = cell.column_name
-    if cls_gt != "None":
-        img_names1 = metric_utils.filter_by_class(g.img2classes_gt, cls_gt)
+    if not multilable_mode_switch.is_switched():
+        # Old method
+        if cls_gt != "None":
+            img_names1 = metric_utils.filter_by_class(g.img2classes_gt, cls_gt)
+        else:
+            img_names1 = metric_utils.filter_by_class(g.img2classes_gt, cls_pred, True)
+        if cls_pred != "None":
+            img_names2 = metric_utils.filter_by_class(g.img2classes_pred, cls_pred)
+        else:
+            img_names2 = metric_utils.filter_by_class(g.img2classes_pred, cls_gt, True)
+        img_names = list(set(img_names1) & set(img_names2))
     else:
-        img_names1 = metric_utils.filter_by_class(g.img2classes_gt, cls_pred, True)
-    if cls_pred != "None":
-        img_names2 = metric_utils.filter_by_class(g.img2classes_pred, cls_pred)
-    else:
-        img_names2 = metric_utils.filter_by_class(g.img2classes_pred, cls_gt, True)
-    img_names = list(set(img_names1) & set(img_names2))
+        # New method
+        img_names = g.confusion_matrix_imgs.loc[cls_gt, cls_pred]
 
     if g.is_multilabel:
         columns = ["GT_IMG_ID", "PRED_IMG_ID", "NAME", "TP", "FP", "FN", "PREVIEW"]
@@ -332,17 +362,23 @@ def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
     df = pd.DataFrame(rows, columns=columns)
     metrics_per_image.read_pandas(df)
     metrics_per_image.show()
+    cell_value = int(cell.cell_value)
     if cell.row_name != "None" and cell.column_name != "None":
-        per_image_notification_box.description = f"{cell.cell_value} images with tag '{cell.row_name}' in ground truth label and '{cell.column_name}' tag in prediction label."
+        per_image_notification_box.description = f"{int(cell_value)} images with tag '{cell.row_name}' in ground truth label and '{cell.column_name}' tag in prediction label."
     elif cell.row_name != "None":
-        per_image_notification_box.description = f"{cell.cell_value} images with tag '{cell.row_name}' in ground truth label and missing '{cell.row_name}' tag in prediction label."
+        per_image_notification_box.description = f"{int(cell_value)} images with tag '{cell.row_name}' in ground truth label and missing '{cell.row_name}' tag in prediction label."
     elif cell.column_name != "None":
-        per_image_notification_box.description = f"{cell.cell_value} images without tag '{cell.column_name}' in ground truth label and with '{cell.column_name}' tag in prediction label."
+        per_image_notification_box.description = f"{int(cell_value)} images without tag '{cell.column_name}' in ground truth label and with '{cell.column_name}' tag in prediction label."
     card_per_image_table.uncollapse()
     set_img_to_gallery(img_names[0])
     current_image_tag.text = f"Image: {img_names[0]}"
     images_gallery.show()
     card_img_preview.uncollapse()
+
+
+@multilable_mode_switch.value_changed
+def on_mode_changed(is_checked):
+    on_metrics_click()
 
 
 @metrics_per_image.click
@@ -425,6 +461,8 @@ def reset_widgets():
     DataJson().send_changes()
     match_tags_rematch_btn.enable()
     match_datasets_warn.hide()
+    multilable_mode_switch.off()
+    multilable_mode_switch_f.hide()
 
 
 ### FINAL APP
