@@ -18,8 +18,5 @@
     "statistics",
     "visualization stats"
   ],
-  "context_menu": {
-    "context_category": "Reports & Stats"
-  },
   "min_instance_version": "6.6.7"
 }
