@@ -316,11 +316,11 @@ def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
 
     cell_value = int(cell.cell_value)
     if cell.row_name != "None" and cell.column_name != "None":
-        per_image_notification_box.description = f"{int(cell_value)} images with tag '{cell.row_name}' in ground truth label and '{cell.column_name}' tag in prediction label."
+        per_image_notification_box.description = f"{int(cell_value)} images with Ground Truth: \"{cell.row_name}\", and Predicted: \"{cell.column_name}\"."
     elif cell.row_name != "None":
-        per_image_notification_box.description = f"{int(cell_value)} images with tag '{cell.row_name}' in ground truth label and missing '{cell.row_name}' tag in prediction label."
+        per_image_notification_box.description = f"{int(cell_value)} images with tag \"{cell.row_name}\" in Ground Truth, that is missing in prediction."
     elif cell.column_name != "None":
-        per_image_notification_box.description = f"{int(cell_value)} images without tag '{cell.column_name}' in ground truth label and with '{cell.column_name}' tag in prediction label."
+        per_image_notification_box.description = f"{int(cell_value)} images without tag \"{cell.column_name}\" in Ground Truth, but it was predicted."
     card_per_image_table.uncollapse()
 
     set_img_to_gallery(items[0], g.metrics.id2ann)
