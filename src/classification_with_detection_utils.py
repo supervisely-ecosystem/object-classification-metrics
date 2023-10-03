@@ -36,7 +36,7 @@ def match_bboxes(pairwise_iou: np.ndarray, min_iou_threshold=0.15):
     return matched_idxs, list(unmatched_idxs_gt), list(unmatched_idxs_pred), ious_matched
 
 
-def collect_labels_with_tags(labels: list, selected_classes: list, unsuffix: dict = None, return_scores=False):
+def collect_labels_with_tags(labels: list, selected_classes: list, unsuffix: dict = None, return_scores=False, topk=None):
     selected_classes = set(selected_classes)
     bboxes, classes = [], []
     label_ids = []
@@ -67,8 +67,10 @@ def collect_labels_with_tags(labels: list, selected_classes: list, unsuffix: dic
 
         # sort tags by confidence score
         if len(tags) == len(scores):
-            tags, _ = list(zip(*sorted(zip(tags, scores), key=lambda pair: pair[1], reverse=True)))
-            tags = list(tags)
+            tags, scores = list(zip(*sorted(zip(tags, scores), key=lambda pair: pair[1], reverse=True)))
+            tags, scores = list(tags), list(scores)
+            if topk:
+                tags, scores = tags[:topk], scores[:topk]
         else:
             # If we don't have scores for every tag and the mode is single-label and the label has multiple tags,
             # it can lead to incorrect metric calculation.
@@ -127,6 +129,7 @@ class Metrics:
 
 
     def calculate(self):
+        self.is_multilabel = self.detect_task_type()
         self.match_objects()
         img2classes_gt = {name: x["classes_gt"] for name, x in self.match_info.items()}
         img2classes_pred = {name: x["classes_pred"] for name, x in self.match_info.items()}
@@ -155,7 +158,7 @@ class Metrics:
         self.match_image_names = []
         self.total_matched = 0
         self.total_objects = 0
-        self.is_multilabel = False
+        topk = None if self.is_multilabel else 1
 
         for i, (dataset_name, item) in enumerate(self.ds_match.items()):
             if item["dataset_matched"] != "both":
@@ -168,13 +171,10 @@ class Metrics:
                 ann_pred: sly.Annotation = self.id2ann[img_pred.id]
 
                 bboxes_gt, classes_gt, label_ids_gt = collect_labels_with_tags(ann_gt.labels, self.classes)
-                bboxes_pred, classes_pred, label_ids_pred, scores_pred = collect_labels_with_tags(ann_pred.labels, self.classes, self.unsuffix, return_scores=True)
+                bboxes_pred, classes_pred, label_ids_pred, scores_pred = collect_labels_with_tags(ann_pred.labels, self.classes, self.unsuffix, return_scores=True, topk=topk)
 
                 if len(bboxes_gt) == 0:
                     continue
-
-                if len(classes_gt) > 1:
-                    self.is_multilabel = True
 
                 matched_idxs, matched_iou = compute_image_match(bboxes_gt, bboxes_pred, classes_gt, classes_pred, self.iou_threshold)
 
@@ -182,7 +182,6 @@ class Metrics:
                 n_digits = len(str(len(matched_idxs)))
                 for i, (idxs, iou) in enumerate(zip(matched_idxs, matched_iou)):
                     idx_gt, idx_pred = idxs
-                    extra_str = f"{classes_gt[idx_gt][0]}" if len(classes_gt[idx_gt]) == 1 else  f"{classes_gt[idx_gt][0]} and others"
                     extra_str = "/".join(classes_gt[idx_gt])
                     item_name = f"{img_name} (bbox #{i:0{n_digits}}: {extra_str})"
                     self.match_info[item_name] = {
@@ -231,3 +230,21 @@ class Metrics:
 
             items.append(item)
         return items
+
+    def detect_task_type(self):
+        for i, (dataset_name, item) in enumerate(self.ds_match.items()):
+            if item["dataset_matched"] != "both":
+                continue
+            for img_item in item["matched"]:
+                img_gt, img_pred = img_item["left"], img_item["right"]
+                img_gt: sly.ImageInfo
+                img_pred: sly.ImageInfo
+                ann_gt: sly.Annotation = self.id2ann[img_gt.id]
+                ann_pred: sly.Annotation = self.id2ann[img_pred.id]
+
+                bboxes_gt, classes_gt, label_ids_gt = collect_labels_with_tags(ann_gt.labels, self.classes)                
+
+                if any([len(tags) > 1 for tags in classes_gt]):
+                    return True
+                
+        return False
