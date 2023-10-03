@@ -189,19 +189,8 @@ metrics_overall_table = Table()
 metrics_overall_table_f = Field(metrics_overall_table, "Overall project metrics")
 metrics_per_class_table = Table()
 metrics_per_class_table_f = Field(metrics_per_class_table, "Per-class metrics")
-multilable_mode_switch = Switch(switched=False)
-multilable_mode_text = Text(
-    "<i style='color:gray;'>(more details in <a href='https://ecosystem.supervise.ly/apps/classification-metrics#Confusion-Matrix-implementation-details-for-multi-label-task' target='_blank'>Readme</a>)</i>"
-)
-multilable_mode_desc = Container([multilable_mode_text, multilable_mode_switch])
-multilable_mode_switch_f = Field(
-    multilable_mode_desc,
-    "Count all combinations for misclassified tags",
-    "Turn on to get more insights about the classes the model most often confuses. "
-    "Note, if enabled, the values in the table will not represent the true number of incorrectly classified images. Instead, it will indicate the number of misclassified tags.",
-)
 metrics_tab_confusion_matrix = Container(
-    [confusion_matrix_widget, multilable_mode_switch_f], gap=20
+    [confusion_matrix_widget], gap=5
 )
 match_rate_info = NotificationBox(box_type="success")
 metrics_tabs = Tabs(
@@ -272,8 +261,6 @@ def update_metric_widgets(metrics: Metrics):
     confusion_matrix_widget.show()
     metrics_overall_table.show()
     metrics_per_class_table.show()
-    if metrics.is_multilabel:
-        multilable_mode_switch_f.show()
     metrics_card.uncollapse()
 
     match_rate_info.title = f"Detection match rate = {round(metrics.total_matched/metrics.total_objects*100, 2)}% ({metrics.total_matched} of {metrics.total_objects} objects are matched by IoU)."
@@ -326,11 +313,6 @@ def on_confusion_matrix_click(cell: ConfusionMatrix.ClickedDataPoint):
     set_img_to_gallery(items[0], g.metrics.id2ann)
     images_gallery.show()
     card_img_preview.uncollapse()
-
-
-@multilable_mode_switch.value_changed
-def on_mode_changed(is_checked):
-    on_metrics_click()
 
 
 @metrics_per_image.click
@@ -397,8 +379,6 @@ def reset_widgets():
     DataJson().send_changes()
     match_tags_rematch_btn.enable()
     match_datasets_warn.hide()
-    multilable_mode_switch.off()
-    multilable_mode_switch_f.hide()
     additional_params_card.lock()
 
 
