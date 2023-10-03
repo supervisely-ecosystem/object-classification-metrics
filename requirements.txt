@@ -1,3 +1,3 @@
-supervisely==6.72.92
+supervisely==6.72.144
 scikit-learn
 Cython
