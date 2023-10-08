@@ -1,6 +1,6 @@
 <div align="center" markdown>
 
-<img src="" />
+<img src="https://github.com/supervisely-ecosystem/object-classification-metrics/assets/115161827/57b5b2ba-b914-4f44-bde9-ebf8eaca85e5" />
 
 
 # Object Classification Metrics
@@ -14,9 +14,9 @@
 
 [![](https://img.shields.io/badge/supervisely-ecosystem-brightgreen)](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/)
 [![](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://supervise.ly/slack)
-![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/supervisely-ecosystem/)
-[![views](https://app.supervise.ly/img/badges/views/supervisely-ecosystem/.png)](https://supervise.ly)
-[![runs](https://app.supervise.ly/img/badges/runs/supervisely-ecosystem/.png)](https://supervise.ly)
+![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/supervisely-ecosystem/object-classification-metrics)
+[![views](https://app.supervise.ly/img/badges/views/supervisely-ecosystem/object-classification-metrics.png)](https://supervise.ly)
+[![runs](https://app.supervise.ly/img/badges/runs/supervisely-ecosystem/object-classification-metrics.png)](https://supervise.ly)
 
 </div>
 
@@ -40,7 +40,8 @@ This app is useful when you have two models in pipeline: Detector + Classifier, 
 
 # Related apps
 
-1. [Apply Detection and Classification Models](https://ecosystem.supervisely.com/apps/apply-det-and-cls-models-to-project)
+1. [Apply Detection and Classification Models](https://ecosystem.supervisely.com/apps/apply-det-and-cls-models-to-project) https://github.com/supervisely-ecosystem/object-classification-metrics/assets/115161827/daf007e1-3814-4fea-8e12-ce931b956e04
+<img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/apply-det-and-cls-models-to-project" src="https://github.com/supervisely-ecosystem/object-classification-metrics/assets/115161827/daf007e1-3814-4fea-8e12-ce931b956e04"  height="60px" style='padding-bottom: 10px'/>
 
 2. [Train MMClassification](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/mmclassification/supervisely/train) app to train classification model on your data 
 <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/mmclassification/supervisely/train" src="https://i.imgur.com/mXG6njU.png" width="350px" style='padding-bottom: 10px'/>
