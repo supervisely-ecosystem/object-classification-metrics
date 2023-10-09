@@ -51,4 +51,4 @@ This app is useful when you have two models in pipeline: Detector + Classifier, 
 
 # Screenshot
 
-<img src="" />
+<img src="https://github.com/supervisely-ecosystem/object-classification-metrics/assets/31512713/784e9423-af51-4565-8b8d-bbc21cfeb57a" />
