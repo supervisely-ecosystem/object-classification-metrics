@@ -40,7 +40,7 @@ This app is useful when you have two models in pipeline: Detector + Classifier, 
 
 # Related apps
 
-1. [Apply Detection and Classification Models](https://ecosystem.supervisely.com/apps/apply-det-and-cls-models-to-project) https://github.com/supervisely-ecosystem/object-classification-metrics/assets/115161827/daf007e1-3814-4fea-8e12-ce931b956e04
+1. [Apply Detection and Classification Models](https://ecosystem.supervisely.com/apps/apply-det-and-cls-models-to-project)
 <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/apply-det-and-cls-models-to-project" src="https://github.com/supervisely-ecosystem/object-classification-metrics/assets/115161827/daf007e1-3814-4fea-8e12-ce931b956e04"  height="60px" style='padding-bottom: 10px'/>
 
 2. [Train MMClassification](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/mmclassification/supervisely/train) app to train classification model on your data 
