@@ -7,6 +7,7 @@
   "entrypoint": "python -m uvicorn src.main:app --host 0.0.0.0 --port 8000",
   "port": 8000,
   "icon": "https://github.com/supervisely-ecosystem/object-classification-metrics/assets/115161827/0b47a42d-bd27-4c01-a248-39c7dfc068f7",
+  "icon_cover": true,
   "icon_background": "#FFFFFF",
   "poster": "https://github.com/supervisely-ecosystem/object-classification-metrics/assets/115161827/57b5b2ba-b914-4f44-bde9-ebf8eaca85e5",
   "categories": [
