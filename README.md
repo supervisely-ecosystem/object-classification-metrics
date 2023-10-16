@@ -1,6 +1,6 @@
 <div align="center" markdown>
 
-<img src="https://github.com/supervisely-ecosystem/object-classification-metrics/assets/115161827/57b5b2ba-b914-4f44-bde9-ebf8eaca85e5" />
+<img src="https://github.com/supervisely-ecosystem/object-classification-metrics/assets/115161827/34144620-b6b5-46b9-a208-c0965d41dde8" />
 
 
 # Object Classification Metrics
