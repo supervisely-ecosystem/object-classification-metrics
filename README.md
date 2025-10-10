@@ -12,7 +12,7 @@
   <a href="#Screenshot">Screenshot</a>
 </p>
 
-[![](https://img.shields.io/badge/supervisely-ecosystem-brightgreen)](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/)
+[![](https://img.shields.io/badge/supervisely-ecosystem-brightgreen)](../../../../supervisely-ecosystem/)
 [![](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://supervise.ly/slack)
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/supervisely-ecosystem/object-classification-metrics)
 [![views](https://app.supervise.ly/img/badges/views/supervisely-ecosystem/object-classification-metrics.png)](https://supervise.ly)
@@ -21,7 +21,7 @@
 </div>
 
 # Overview
-This app is useful when you have two models in pipeline: Detector + Classifier, that can be achieved with [Apply Detection and Classification Models](https://ecosystem.supervisely.com/apps/apply-det-and-cls-models-to-project), allowing you to evaluate your classifier by comparing ground truth annotations with predictions. In this app predicted tags (classes) must be assigned to the objects (Rectangles), instead of whole images, like in [Image Classification Metrics](https://ecosystem.supervisely.com/apps/classification-metrics) app. The app also supports single-label and multi-label classification tasks.
+This app is useful when you have two models in pipeline: Detector + Classifier, that can be achieved with [Apply Detection and Classification Models](../../../../supervisely-ecosystem/apply-det-and-cls-models-to-project), allowing you to evaluate your classifier by comparing ground truth annotations with predictions. In this app predicted tags (classes) must be assigned to the objects (Rectangles), instead of whole images, like in [Image Classification Metrics](../../../../supervisely-ecosystem/classification-metrics) app. The app also supports single-label and multi-label classification tasks.
 
 **Application key points:**
 
@@ -40,13 +40,13 @@ This app is useful when you have two models in pipeline: Detector + Classifier, 
 
 # Related apps
 
-1. [Apply Detection and Classification Models](https://ecosystem.supervisely.com/apps/apply-det-and-cls-models-to-project)
+1. [Apply Detection and Classification Models](../../../../supervisely-ecosystem/apply-det-and-cls-models-to-project)
 <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/apply-det-and-cls-models-to-project" src="https://github.com/supervisely-ecosystem/object-classification-metrics/assets/115161827/daf007e1-3814-4fea-8e12-ce931b956e04"  height="60px" style='padding-bottom: 10px'/>
 
-2. [Train MMClassification](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/mmclassification/supervisely/train) app to train classification model on your data 
+2. [Train MMClassification](../../../../supervisely-ecosystem/mmclassification/supervisely/train) app to train classification model on your data 
 <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/mmclassification/supervisely/train" src="https://i.imgur.com/mXG6njU.png" width="350px" style='padding-bottom: 10px'/>
 
-3. [Serve MMClassification](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/mmclassification/supervisely/serve) app to load classification model to be applied to your project
+3. [Serve MMClassification](../../../../supervisely-ecosystem/mmclassification/supervisely/serve) app to load classification model to be applied to your project
 <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/mmclassification/supervisely/serve" src="https://i.imgur.com/CU8XHdQ.png" width="350px" style='padding-bottom: 10px'/>
 
 # Screenshot
