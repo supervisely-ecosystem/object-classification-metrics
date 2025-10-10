@@ -43,10 +43,10 @@ This app is useful when you have two models in pipeline: Detector + Classifier, 
 1. [Apply Detection and Classification Models](../../../../supervisely-ecosystem/apply-det-and-cls-models-to-project)
 <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/apply-det-and-cls-models-to-project" src="https://github.com/supervisely-ecosystem/object-classification-metrics/assets/115161827/daf007e1-3814-4fea-8e12-ce931b956e04"  height="60px" style='padding-bottom: 10px'/>
 
-2. [Train MMClassification](../../../../supervisely-ecosystem/mmclassification/supervisely/train) app to train classification model on your data 
+2. [Train MMClassification](../../../../../../supervisely-ecosystem/mmclassification/supervisely/train) app to train classification model on your data 
 <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/mmclassification/supervisely/train" src="https://i.imgur.com/mXG6njU.png" width="350px" style='padding-bottom: 10px'/>
 
-3. [Serve MMClassification](../../../../supervisely-ecosystem/mmclassification/supervisely/serve) app to load classification model to be applied to your project
+3. [Serve MMClassification](../../../../../../supervisely-ecosystem/mmclassification/supervisely/serve) app to load classification model to be applied to your project
 <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/mmclassification/supervisely/serve" src="https://i.imgur.com/CU8XHdQ.png" width="350px" style='padding-bottom: 10px'/>
 
 # Screenshot
